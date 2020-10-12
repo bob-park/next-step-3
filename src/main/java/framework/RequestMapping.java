@@ -1,4 +1,4 @@
-package model.request;
+package framework;
 
 import constants.HttpMethod;
 

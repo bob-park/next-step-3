@@ -6,7 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import constants.HttpMethod;
-import model.request.RequestMapping;
+import framework.HttpRequest;
+import framework.RequestMapping;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import util.RequestMappingUtils;
@@ -32,9 +33,9 @@ public class RequestHandler extends Thread {
       DataOutputStream dos = new DataOutputStream(out);
       //            byte[] body = body = "Hello World".getBytes();
 
-      setRequestMapping();
+      HttpRequest httpRequest = new HttpRequest(in);
 
-      byte[] body = RequestMappingUtils.getBody(in);
+      byte[] body = RequestMappingUtils.getBody(httpRequest);
 
       response200Header(dos, body.length);
       responseBody(dos, body);
@@ -63,13 +64,5 @@ public class RequestHandler extends Thread {
     } catch (IOException e) {
       log.error(e.getMessage());
     }
-  }
-
-  private void setRequestMapping() throws Exception {
-    RequestMappingUtils.addRequestMapping(
-        new RequestMapping(HttpMethod.GET, "/", "Hello World".getBytes()));
-    RequestMappingUtils.addRequestMapping(
-        new RequestMapping(
-            HttpMethod.GET, "/index.html", Files.readAllBytes(Paths.get("./webapp/index.html"))));
   }
 }
