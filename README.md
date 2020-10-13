@@ -22,13 +22,13 @@
 * 
 
 ### 요구사항 3 - post 방식으로 회원가입
-* 
+* body 는 개행문자(\n) 이후 선언된다.
 
 ### 요구사항 4 - redirect 방식으로 이동
 * 
 
 ### 요구사항 5 - cookie
-* 
+* Set-Cookie 시 redirect 를 할 경우, 쿠키를 생성한 url 범위에서만 쿠키를 전송하기 때문에 별도로 Path 를 지정해주어야 redirect 시 쿠키를 전달할 수 있다.  
 
 ### 요구사항 6 - stylesheet 적용
 * 
