@@ -8,7 +8,7 @@ public class HttpHeaders {
   private String connection;
   private int contentLength;
   private String contentType;
-  private String accept;
+  private HttpAccepts accepts;
   private HttpCookies cookies;
 
   public HttpHeaders() {}
@@ -29,7 +29,7 @@ public class HttpHeaders {
       } else if ("Content-Type".equals(pair.getKey())) {
         setContentType(pair.getValue());
       } else if ("Accept".equals(pair.getKey())) {
-        setAccept(pair.getValue());
+        setAccepts(new HttpAccepts(pair.getValue()));
       } else if ("Cookie".equals(pair.getKey())) {
 
         setCookies(new HttpCookies(HttpRequestUtils.parseCookies(pair.getValue())));
@@ -69,12 +69,12 @@ public class HttpHeaders {
     this.contentType = contentType;
   }
 
-  public String getAccept() {
-    return accept;
+  public HttpAccepts getAccepts() {
+    return accepts;
   }
 
-  public void setAccept(String accept) {
-    this.accept = accept;
+  public void setAccepts(HttpAccepts accepts) {
+    this.accepts = accepts;
   }
 
   public HttpCookies getCookies() {

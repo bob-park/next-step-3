@@ -27,6 +27,14 @@ public class HttpCookies {
     this.path = path;
   }
 
+  public String getCookie(String key) {
+    return cookie.get(key);
+  }
+
+  public Map<String, String> getCookies() {
+    return cookie;
+  }
+
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();

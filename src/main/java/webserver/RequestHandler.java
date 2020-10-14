@@ -1,7 +1,10 @@
 package webserver;
 
+import http.HttpAccepts;
 import http.HttpCookies;
+import http.HttpHeaders;
 import http.HttpRequest;
+import model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.user.UserService;
@@ -47,18 +50,9 @@ public class RequestHandler extends Thread {
       if ("/".equals(httpRequest.getRequestPath())) {
         body = "Hello World".getBytes();
         response200Header(dos, body.length);
-      } else if ("/index.html".equals(httpRequest.getRequestPath())) {
-        body = Files.readAllBytes(Paths.get("./webapp/index.html"));
-        response200Header(dos, body.length);
-      } else if ("/user/form.html".equals(httpRequest.getRequestPath())) {
-        body = Files.readAllBytes(Paths.get("./webapp/user/form.html"));
-        response200Header(dos, body.length);
       } else if ("/user/create".equals(httpRequest.getRequestPath())) {
         userService.saveUser(httpRequest);
         response302Header(dos, "/index.html");
-      } else if ("/user/login.html".equals(httpRequest.getRequestPath())) {
-        body = Files.readAllBytes(Paths.get("./webapp/user/login.html"));
-        response200Header(dos, body.length);
       } else if ("/user/login".equals(httpRequest.getRequestPath())) {
 
         boolean logined = userService.login(httpRequest);
@@ -71,9 +65,52 @@ public class RequestHandler extends Thread {
 
         response302Header(dos, redirect, cookies);
 
-      } else if ("/user/login_failed.html".equals(httpRequest.getRequestPath())) {
-        body = Files.readAllBytes(Paths.get("./webapp/user/login_failed.html"));
-        response200Header(dos, body.length);
+      } else if ("/user/list".equals(httpRequest.getRequestPath())) {
+
+        HttpHeaders headers = httpRequest.getHeaders();
+
+        HttpCookies cookies = headers.getCookies();
+
+        boolean isLogin = Boolean.parseBoolean(cookies.getCookie("logined"));
+
+        if (isLogin) {
+
+          StringBuilder builder = new StringBuilder();
+
+          builder
+              .append("<table border=1>")
+              .append("<thead>")
+              .append("<tr>")
+              .append("<th>#</th>")
+              .append("<th>사용자 아이디</th>")
+              .append("<th>이름</th>")
+              .append("<th>이메일</th>")
+              .append("</tr>")
+              .append("</thead>")
+              .append("<tbody>");
+
+          int index = 1;
+          for (User user : userService.findAll()) {
+            builder
+                .append("<tr>")
+                .append(String.format("<td>%s</td>", index++))
+                .append(String.format("<td>%s</td>", user.getUserId()))
+                .append(String.format("<td>%s</td>", user.getName()))
+                .append(String.format("<td>%s</td>", user.getEmail()))
+                .append("</tr>");
+          }
+
+          builder.append("</tbody>").append("</table>");
+
+          body = builder.toString().getBytes();
+          response200Header(dos, body.length);
+
+        } else {
+          response302Header(dos, "/user/login.html");
+        }
+      } else {
+        body = Files.readAllBytes(Paths.get("./webapp" + httpRequest.getRequestPath()));
+        responseResource(httpRequest.getHeaders().getAccepts(), dos, body.length);
       }
 
       responseBody(dos, body);
@@ -85,19 +122,10 @@ public class RequestHandler extends Thread {
   }
 
   private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {
-    response200Header(dos, lengthOfBodyContent, null);
-  }
-
-  private void response200Header(
-      DataOutputStream dos, int lengthOfBodyContent, HttpCookies cookies) {
     try {
       dos.writeBytes("HTTP/1.1 200 OK \r\n");
       dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
       dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
-
-      if (cookies != null) {
-        dos.writeBytes("Set-Cookie: " + cookies.toString() + "\r\n");
-      }
 
       dos.writeBytes("\r\n");
     } catch (IOException e) {
@@ -118,6 +146,22 @@ public class RequestHandler extends Thread {
       }
 
       dos.writeBytes("Location: " + redirect + "\r\n");
+
+      dos.writeBytes("\r\n");
+    } catch (IOException e) {
+      log.error(e.getMessage());
+    }
+  }
+
+  private void responseResource(
+      HttpAccepts accepts, DataOutputStream dos, int lengthOfBodyContent) {
+
+    String contentType = accepts.getFirst().equals("*/*") ? "text/html" : accepts.getFirst();
+
+    try {
+      dos.writeBytes("HTTP/1.1 200 OK \r\n");
+      dos.writeBytes("Content-Type: " + contentType + ";charset=utf-8\r\n");
+      dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
 
       dos.writeBytes("\r\n");
     } catch (IOException e) {

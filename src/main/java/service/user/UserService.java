@@ -7,6 +7,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import util.HttpRequestUtils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class UserService {
@@ -46,5 +48,9 @@ public class UserService {
     }
 
     return password.equals(user.getPassword());
+  }
+
+  public List<User> findAll() {
+    return new ArrayList<>(DataBase.findAll());
   }
 }
