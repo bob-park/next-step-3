@@ -1,4 +1,4 @@
-package http;
+package http.cookie;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,6 +17,10 @@ public class HttpCookies {
   public HttpCookies addCookie(String key, String value) {
     cookie.put(key, value);
     return this;
+  }
+
+  public void addCookieAll(Map<String, String> cookieMap){
+    this.cookie.putAll(cookieMap);
   }
 
   public String getPath() {

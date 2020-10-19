@@ -1,9 +1,9 @@
 package webserver;
 
-import http.HttpAccepts;
-import http.HttpCookies;
-import http.HttpHeaders;
 import http.HttpRequest;
+import http.constants.HttpMediaType;
+import http.cookie.HttpCookies;
+import http.header.HttpHeaders;
 import model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,6 +32,7 @@ public class RequestHandler extends Thread {
     this.userService = new UserService();
   }
 
+  @Override
   public void run() {
     log.debug(
         "New Client Connect! Connected IP : {}, Port : {}",
@@ -44,6 +45,8 @@ public class RequestHandler extends Thread {
       DataOutputStream dos = new DataOutputStream(out);
 
       HttpRequest httpRequest = new HttpRequest(in);
+      HttpHeaders headers = httpRequest.getHeaders();
+      HttpCookies cookies = headers.getCookies();
 
       byte[] body = new byte[0];
 
@@ -57,7 +60,6 @@ public class RequestHandler extends Thread {
 
         boolean logined = userService.login(httpRequest);
 
-        HttpCookies cookies = new HttpCookies();
         cookies.setPath("/");
         cookies.addCookie("logined", String.valueOf(logined));
 
@@ -66,10 +68,6 @@ public class RequestHandler extends Thread {
         response302Header(dos, redirect, cookies);
 
       } else if ("/user/list".equals(httpRequest.getRequestPath())) {
-
-        HttpHeaders headers = httpRequest.getHeaders();
-
-        HttpCookies cookies = headers.getCookies();
 
         boolean isLogin = Boolean.parseBoolean(cookies.getCookie("logined"));
 
@@ -109,14 +107,16 @@ public class RequestHandler extends Thread {
           response302Header(dos, "/user/login.html");
         }
       } else {
+
         body = Files.readAllBytes(Paths.get("./webapp" + httpRequest.getRequestPath()));
-        responseResource(httpRequest.getHeaders().getAccepts(), dos, body.length);
+        responseResource(headers.getAccept(), dos, body.length);
       }
 
       responseBody(dos, body);
     } catch (IOException e) {
       log.error(e.getMessage());
     } catch (Exception e) {
+
       log.error("Exception - {}", e.getMessage(), e);
     }
   }
@@ -154,9 +154,10 @@ public class RequestHandler extends Thread {
   }
 
   private void responseResource(
-      HttpAccepts accepts, DataOutputStream dos, int lengthOfBodyContent) {
+      HttpMediaType accept, DataOutputStream dos, int lengthOfBodyContent) {
 
-    String contentType = accepts.getFirst().equals("*/*") ? "text/html" : accepts.getFirst();
+    HttpMediaType contentType =
+        accept == null || accept.getType().equals("*/*") ? HttpMediaType.TEXT_HTML : accept;
 
     try {
       dos.writeBytes("HTTP/1.1 200 OK \r\n");

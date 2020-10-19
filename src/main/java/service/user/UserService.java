@@ -36,7 +36,7 @@ public class UserService {
 
   public boolean login(HttpRequest httpRequest) {
 
-    Map<String, String> requestParam = HttpRequestUtils.parseQueryString(httpRequest.getBody());
+    Map<String, String> requestParam = httpRequest.getParams();
 
     String userId = requestParam.get("userId");
     String password = requestParam.get("password");
