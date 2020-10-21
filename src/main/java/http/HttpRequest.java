@@ -2,6 +2,7 @@ package http;
 
 import exception.http.InvalidRequestLineException;
 import exception.http.InvalidRequestUriFormatException;
+import http.constants.HttpMediaType;
 import http.constants.HttpMethod;
 import http.constants.HttpVersion;
 import http.header.HttpHeaders;
@@ -11,6 +12,8 @@ import util.HttpRequestUtils;
 import util.IOUtils;
 
 import java.io.*;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -18,15 +21,29 @@ import java.util.regex.Pattern;
 
 public class HttpRequest {
 
-  private static final String REQUEST_LINE_SEPARATOR = " ";
-  private static final String URI_REGEX = "([^\\?]+)(\\?.*)?";
-  private static final Pattern URI_PATTERN = Pattern.compile(URI_REGEX);
+  private final Logger logger = LoggerFactory.getLogger(getClass());
 
-  private static final int URI_PATTERN_URI_GROUP = 1;
-  private static final int URI_PATTERN_QUERY_STRING_GROUP = 2;
+  /*
+   * Separator
+   */
+  private static final String REQUEST_LINE_SEPARATOR = " ";
   private static final String BEGIN_QUERY_STRING = "?";
 
-  private final Logger logger = LoggerFactory.getLogger(getClass());
+  /*
+   * URI
+   */
+  private static final String URI_REGEX = "([^\\?]+)(\\?.*)?";
+  private static final int URI_PATTERN_URI_GROUP = 1;
+  private static final int URI_PATTERN_QUERY_STRING_GROUP = 2;
+  private static final Pattern URI_PATTERN = Pattern.compile(URI_REGEX);
+
+  /*
+   * Query String
+   */
+  private static final String QUERY_STRING_REGEX = "[&]?([\\w]+)(=([^&=]+))?";
+  private static final int QUERY_STRING_KEY_GROUP = 1;
+  private static final int QUERY_STRING_VALUE_GROUP = 3;
+  private static final Pattern QUERY_STRING_PATTERN = Pattern.compile(QUERY_STRING_REGEX);
 
   /*
    * Request Line
@@ -139,10 +156,17 @@ public class HttpRequest {
 
   public void setBody(BufferedReader reader) throws IOException {
 
-    // TODO body 가 query string format이 아닌 경우를 생각해야한다.
-    this.body = IOUtils.readData(reader, (int) headers.getContentsLength());
+    if (HttpMediaType.APPLICATION_FORM_URLENCODED == headers.getContentsType()) {
+      this.body = IOUtils.readData(reader, (int) headers.getContentsLength());
 
-    this.params.putAll(HttpRequestUtils.parseQueryString(this.body));
+      Matcher matcher = QUERY_STRING_PATTERN.matcher(body);
+
+      while (matcher.find()) {
+        this.params.put(
+            matcher.group(QUERY_STRING_KEY_GROUP),
+            URLDecoder.decode(matcher.group(QUERY_STRING_VALUE_GROUP), StandardCharsets.UTF_8));
+      }
+    }
   }
 
   private boolean checkRequestEnd(String line) {

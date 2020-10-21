@@ -1,13 +1,14 @@
 package webserver;
 
 import http.HttpRequest;
+import http.HttpResponse;
 import http.constants.HttpMediaType;
 import http.cookie.HttpCookies;
-import http.header.HttpHeaders;
 import model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.user.UserService;
+import util.FilenameUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -42,34 +43,35 @@ public class RequestHandler extends Thread {
     try (InputStream in = connection.getInputStream();
         OutputStream out = connection.getOutputStream()) {
 
-      DataOutputStream dos = new DataOutputStream(out);
-
       HttpRequest httpRequest = new HttpRequest(in);
-      HttpHeaders headers = httpRequest.getHeaders();
-      HttpCookies cookies = headers.getCookies();
+      HttpResponse httpResponse = new HttpResponse(httpRequest, new DataOutputStream(out));
 
-      byte[] body = new byte[0];
+      byte[] body = null;
 
       if ("/".equals(httpRequest.getRequestPath())) {
         body = "Hello World".getBytes();
-        response200Header(dos, body.length);
+        httpResponse.send(body);
+
       } else if ("/user/create".equals(httpRequest.getRequestPath())) {
         userService.saveUser(httpRequest);
-        response302Header(dos, "/index.html");
+        httpResponse.sendRedirect("/index.html");
       } else if ("/user/login".equals(httpRequest.getRequestPath())) {
 
         boolean logined = userService.login(httpRequest);
 
-        cookies.setPath("/");
-        cookies.addCookie("logined", String.valueOf(logined));
+        HttpCookies cookies = new HttpCookies();
+
+        cookies.addCookie("logined", logined);
 
         String redirect = logined ? "/index.html" : "/user/login_failed.html";
 
-        response302Header(dos, redirect, cookies);
+        httpResponse.getHeaders().setCookies(cookies);
+        httpResponse.sendRedirect(redirect);
 
       } else if ("/user/list".equals(httpRequest.getRequestPath())) {
 
-        boolean isLogin = Boolean.parseBoolean(cookies.getCookie("logined"));
+        boolean isLogin =
+            Boolean.parseBoolean(httpRequest.getHeaders().getCookies().getCookie("logined"));
 
         if (isLogin) {
 
@@ -101,81 +103,27 @@ public class RequestHandler extends Thread {
           builder.append("</tbody>").append("</table>");
 
           body = builder.toString().getBytes();
-          response200Header(dos, body.length);
+
+          httpResponse.setContentType(HttpMediaType.TEXT_HTML).send(body);
 
         } else {
-          response302Header(dos, "/user/login.html");
+
+          httpResponse.sendRedirect("/user/login.html");
         }
       } else {
 
         body = Files.readAllBytes(Paths.get("./webapp" + httpRequest.getRequestPath()));
-        responseResource(headers.getAccept(), dos, body.length);
-      }
 
-      responseBody(dos, body);
+        httpResponse
+            .setContentType(
+                HttpMediaType.parseMediaTypeByExtension(
+                    FilenameUtils.getExtension(httpRequest.getRequestPath())))
+            .send(body);
+      }
     } catch (IOException e) {
       log.error(e.getMessage());
     } catch (Exception e) {
-
       log.error("Exception - {}", e.getMessage(), e);
-    }
-  }
-
-  private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {
-    try {
-      dos.writeBytes("HTTP/1.1 200 OK \r\n");
-      dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
-      dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
-
-      dos.writeBytes("\r\n");
-    } catch (IOException e) {
-      log.error(e.getMessage());
-    }
-  }
-
-  private void response302Header(DataOutputStream dos, String redirect) {
-    response302Header(dos, redirect, null);
-  }
-
-  private void response302Header(DataOutputStream dos, String redirect, HttpCookies cookies) {
-    try {
-      dos.writeBytes("HTTP/1.1 302 Redirect \r\n");
-
-      if (cookies != null) {
-        dos.writeBytes("Set-Cookie: " + cookies.toString() + "\r\n");
-      }
-
-      dos.writeBytes("Location: " + redirect + "\r\n");
-
-      dos.writeBytes("\r\n");
-    } catch (IOException e) {
-      log.error(e.getMessage());
-    }
-  }
-
-  private void responseResource(
-      HttpMediaType accept, DataOutputStream dos, int lengthOfBodyContent) {
-
-    HttpMediaType contentType =
-        accept == null || accept.getType().equals("*/*") ? HttpMediaType.TEXT_HTML : accept;
-
-    try {
-      dos.writeBytes("HTTP/1.1 200 OK \r\n");
-      dos.writeBytes("Content-Type: " + contentType + ";charset=utf-8\r\n");
-      dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
-
-      dos.writeBytes("\r\n");
-    } catch (IOException e) {
-      log.error(e.getMessage());
-    }
-  }
-
-  private void responseBody(DataOutputStream dos, byte[] body) {
-    try {
-      dos.write(body, 0, body.length);
-      dos.flush();
-    } catch (IOException e) {
-      log.error(e.getMessage());
     }
   }
 }

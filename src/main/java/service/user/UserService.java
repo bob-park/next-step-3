@@ -22,7 +22,7 @@ public class UserService {
 
   public void saveUser(HttpRequest httpRequest) {
 
-    Map<String, String> requestParam = HttpRequestUtils.parseQueryString(httpRequest.getBody());
+    Map<String, String> requestParam = httpRequest.getParams();
 
     User user =
         new User(

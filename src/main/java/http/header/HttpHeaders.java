@@ -5,28 +5,36 @@ import http.constants.HttpMediaType;
 import http.cookie.HttpCookies;
 import util.HttpRequestUtils;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class HttpHeaders {
 
   private final Map<String, String> headers = new HashMap<>();
 
-  private final HttpCookies cookies = new HttpCookies();
+  private HttpCookies cookies = new HttpCookies();
+
+  public HttpHeaders() {
+    this("");
+  }
 
   public HttpHeaders(String requestHeaders) {
 
-    String[] headerLines = requestHeaders.split("\n");
+    if (!requestHeaders.isBlank()) {
+      String[] headerLines = requestHeaders.split("\n");
 
-    for (String headerLine : headerLines) {
+      for (String headerLine : headerLines) {
 
-      HttpRequestUtils.Pair pair = HttpRequestUtils.parseHeader(headerLine);
+        HttpRequestUtils.Pair pair = HttpRequestUtils.parseHeader(headerLine);
 
-      if ("Cookie".equals(pair.getKey())) {
-        this.cookies.addCookieAll(HttpRequestUtils.parseCookies(pair.getValue()));
+        if ("Cookie".equals(pair.getKey())) {
+          this.cookies.addCookieAll(HttpRequestUtils.parseCookies(pair.getValue()));
+        }
+
+        addHeader(pair.getKey(), pair.getValue());
       }
-
-      addHeader(pair.getKey(), pair.getValue());
     }
   }
 
@@ -50,8 +58,8 @@ public class HttpHeaders {
     return headers.get(headerName);
   }
 
-  public String getContentsType() {
-    return getHeader(HttpHeader.GENERAL_HEADER_CONTENT_TYPE);
+  public HttpMediaType getContentsType() {
+    return HttpMediaType.findByTypeName(getHeader(HttpHeader.GENERAL_HEADER_CONTENT_TYPE));
   }
 
   public void setContentType(HttpMediaType mediaType) {
@@ -73,17 +81,11 @@ public class HttpHeaders {
     addHeader(HttpHeader.GENERAL_HEADER_CONTENT_LENGTH, length);
   }
 
-  public HttpMediaType getAccept() {
+  public List<HttpMediaType> getAccepts() {
 
-    String accepts = getHeader(HttpHeader.REQUEST_HEADER_ACCEPT);
+    List<HttpMediaType> result = new ArrayList<>();
 
-    HttpMediaType accept = null;
-
-    if (accepts != null) {
-      accept = HttpMediaType.findByTypeName(accepts.split(",")[0]);
-    }
-
-    return accept;
+    return result;
   }
 
   public Map<String, String> getHeaders() {
@@ -92,6 +94,10 @@ public class HttpHeaders {
 
   public HttpCookies getCookies() {
     return cookies;
+  }
+
+  public void setCookies(HttpCookies cookies) {
+    this.cookies = cookies;
   }
 
   /*

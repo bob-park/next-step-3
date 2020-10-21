@@ -5,7 +5,7 @@ import java.util.Map;
 
 public class HttpCookies {
 
-  private String path;
+  private String path = "/";
   private Map<String, String> cookie = new HashMap<>();
 
   public HttpCookies() {}
@@ -14,12 +14,12 @@ public class HttpCookies {
     this.cookie = cookie;
   }
 
-  public HttpCookies addCookie(String key, String value) {
-    cookie.put(key, value);
+  public HttpCookies addCookie(String key, Object value) {
+    cookie.put(key, String.valueOf(value));
     return this;
   }
 
-  public void addCookieAll(Map<String, String> cookieMap){
+  public void addCookieAll(Map<String, String> cookieMap) {
     this.cookie.putAll(cookieMap);
   }
 
