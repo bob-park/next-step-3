@@ -1,5 +1,7 @@
 package http.constants;
 
+import util.FilenameUtils;
+
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -39,6 +41,10 @@ public enum HttpMediaType {
             })
         .findAny()
         .orElse(ALL);
+  }
+
+  public static HttpMediaType parseMediaTypeByFileName(String fileName) {
+    return parseMediaTypeByExtension(FilenameUtils.getExtension(fileName));
   }
 
   @Override

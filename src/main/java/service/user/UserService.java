@@ -5,7 +5,6 @@ import http.HttpRequest;
 import model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import util.HttpRequestUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,14 +21,12 @@ public class UserService {
 
   public void saveUser(HttpRequest httpRequest) {
 
-    Map<String, String> requestParam = httpRequest.getParams();
-
     User user =
         new User(
-            requestParam.get("userId"),
-            requestParam.get("password"),
-            requestParam.get("name"),
-            requestParam.get("email"));
+            httpRequest.getParameter("userId"),
+            httpRequest.getParameter("password"),
+            httpRequest.getParameter("name"),
+            httpRequest.getParameter("email"));
 
     DataBase.addUser(user);
   }

@@ -111,14 +111,7 @@ public class RequestHandler extends Thread {
           httpResponse.sendRedirect("/user/login.html");
         }
       } else {
-
-        body = Files.readAllBytes(Paths.get("./webapp" + httpRequest.getRequestPath()));
-
-        httpResponse
-            .setContentType(
-                HttpMediaType.parseMediaTypeByExtension(
-                    FilenameUtils.getExtension(httpRequest.getRequestPath())))
-            .send(body);
+        httpResponse.forword();
       }
     } catch (IOException e) {
       log.error(e.getMessage());

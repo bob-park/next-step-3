@@ -4,9 +4,13 @@ import http.constants.HttpHeader;
 import http.constants.HttpMediaType;
 import http.constants.HttpStatus;
 import http.header.HttpHeaders;
+import util.FilenameUtils;
 
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class HttpResponse {
 
@@ -45,6 +49,15 @@ public class HttpResponse {
   public HttpResponse setContentType(HttpMediaType contentType) {
     headers.addHeader(HttpHeader.GENERAL_HEADER_CONTENT_TYPE, contentType);
     return this;
+  }
+
+  public void forword() throws IOException {
+
+    String path = request.getRequestPath();
+
+    setContentType(HttpMediaType.parseMediaTypeByFileName(path));
+
+    send(Files.readAllBytes(Paths.get("./webapp" + path)));
   }
 
   public void send(byte[] body) throws IOException {

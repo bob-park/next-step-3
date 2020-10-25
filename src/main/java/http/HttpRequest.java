@@ -114,6 +114,10 @@ public class HttpRequest {
     return params;
   }
 
+  public String getParameter(String name) {
+    return params.get(name);
+  }
+
   public String getBody() {
     return body;
   }
@@ -147,9 +151,9 @@ public class HttpRequest {
 
       int beginQueryStringIndex = queryString.indexOf(BEGIN_QUERY_STRING);
 
-      if (beginQueryStringIndex > 0) {
+      if (beginQueryStringIndex >= 0) {
         this.params.putAll(
-            HttpRequestUtils.parseQueryString(queryString.substring(beginQueryStringIndex)));
+            HttpRequestUtils.parseQueryString(queryString.substring(beginQueryStringIndex + 1)));
       }
     }
   }
