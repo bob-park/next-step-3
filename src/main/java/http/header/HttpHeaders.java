@@ -5,9 +5,7 @@ import http.constants.HttpMediaType;
 import http.cookie.HttpCookies;
 import util.HttpRequestUtils;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class HttpHeaders {
@@ -81,13 +79,6 @@ public class HttpHeaders {
     addHeader(HttpHeader.GENERAL_HEADER_CONTENT_LENGTH, length);
   }
 
-  public List<HttpMediaType> getAccepts() {
-
-    List<HttpMediaType> result = new ArrayList<>();
-
-    return result;
-  }
-
   public Map<String, String> getHeaders() {
     return headers;
   }
@@ -105,5 +96,19 @@ public class HttpHeaders {
    */
   public String getCacheControl() {
     return getHeader("Cache-Control");
+  }
+
+  @Override
+  public String toString() {
+
+    StringBuilder builder = new StringBuilder();
+
+    headers.forEach((key, value) -> builder.append(String.format("%s: %s\r%n", key, value)));
+
+    if (!getCookies().getCookies().isEmpty()) {
+      builder.append(String.format("Set-Cookie: %s", getCookies()));
+    }
+
+    return builder.toString();
   }
 }

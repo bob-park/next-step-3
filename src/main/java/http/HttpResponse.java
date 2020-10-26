@@ -4,15 +4,19 @@ import http.constants.HttpHeader;
 import http.constants.HttpMediaType;
 import http.constants.HttpStatus;
 import http.header.HttpHeaders;
-import util.FilenameUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
-import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
 public class HttpResponse {
+
+  private final Logger logger = LoggerFactory.getLogger(getClass());
+
+  private static final String WEBAPP_DIRECTORY = "./webapp";
 
   /*
    * Http Request
@@ -27,9 +31,11 @@ public class HttpResponse {
   /*
    * Response Body
    */
-  private final DataOutputStream outputStream;
+  private HttpStatus status = HttpStatus.OK;
+  private final OutputStream outputStream;
+  private byte[] body;
 
-  public HttpResponse(HttpRequest request, DataOutputStream outputStream) {
+  public HttpResponse(HttpRequest request, OutputStream outputStream) {
     this.request = request;
     this.outputStream = outputStream;
   }
@@ -42,7 +48,7 @@ public class HttpResponse {
     return headers;
   }
 
-  public DataOutputStream getOutputStream() {
+  public OutputStream getOutputStream() {
     return outputStream;
   }
 
@@ -51,57 +57,77 @@ public class HttpResponse {
     return this;
   }
 
-  public void forword() throws IOException {
+  public HttpStatus status() {
+    return this.status;
+  }
 
-    String path = request.getRequestPath();
+  public HttpResponse status(HttpStatus status) {
+    this.status = status;
+    return this;
+  }
+
+  public HttpResponse body(byte[] body) {
+    this.body = body;
+    return this;
+  }
+
+  public byte[] body() {
+    return this.body;
+  }
+
+  public void forward(String path) throws IOException {
 
     setContentType(HttpMediaType.parseMediaTypeByFileName(path));
 
-    send(Files.readAllBytes(Paths.get("./webapp" + path)));
-  }
+    body(Files.readAllBytes(Paths.get(WEBAPP_DIRECTORY + path)));
 
-  public void send(byte[] body) throws IOException {
-    send(HttpStatus.OK, body);
+    send();
   }
 
   public void sendRedirect(String redirectPath) throws IOException {
 
     this.headers.addHeader(HttpHeader.RESPONSE_HEADER_LOCATION, redirectPath);
 
-    send(HttpStatus.FOUND, null);
+    status(HttpStatus.FOUND).send();
   }
 
-  public void send(HttpStatus status, byte[] body) throws IOException {
+  public void send() throws IOException {
 
-    outputStream.writeBytes(
-        String.format(
-            "%s %s %s \r%n", request.getHttpVersion(), status.getCode(), status.getMessage()));
+    writeBytes(getStatusLine());
 
     if (body != null) {
       headers.addHeader(HttpHeader.GENERAL_HEADER_CONTENT_LENGTH, body.length);
     }
 
-    headers
-        .getHeaders()
-        .forEach(
-            (key, value) -> {
-              try {
-                outputStream.writeBytes(String.format("%s: %s\r%n", key, value));
-              } catch (IOException e) {
-                e.printStackTrace();
-              }
-            });
-
-    if (!headers.getCookies().getCookies().isEmpty()) {
-      outputStream.writeBytes(String.format("Set-Cookie: %s", headers.getCookies()));
-    }
-
-    outputStream.writeBytes("\r\n");
+    writeBytes(headers.toString());
+    writeBytes("\r\n");
 
     if (body != null) {
       outputStream.write(body, 0, body.length);
     }
 
     outputStream.flush();
+
+    String noneBodyResponseStr = toStringNoneBody();
+
+    logger.debug("Response : \n{}", noneBodyResponseStr);
+  }
+
+  public String toStringNoneBody() {
+    return getStatusLine() + headers.toString();
+  }
+
+  public String toString() {
+    return toStringNoneBody() + "\r\n" + new String(body);
+  }
+
+  private void writeBytes(String data) throws IOException {
+    this.outputStream.write(data.getBytes());
+  }
+
+  private String getStatusLine() {
+    return String.format(
+        "%s %s %s\r%n",
+        this.request.getHttpVersion(), this.status.getCode(), this.status.getMessage());
   }
 }
