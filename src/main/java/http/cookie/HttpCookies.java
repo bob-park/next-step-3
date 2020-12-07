@@ -47,7 +47,7 @@ public class HttpCookies {
       builder.append(String.format("%s=%s;", entry.getKey(), entry.getValue()));
     }
 
-    builder.append("Path=").append(path);
+    builder.append("Path=").append(path).append("\r\n");
 
     return builder.toString();
   }

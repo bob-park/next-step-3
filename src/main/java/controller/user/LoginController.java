@@ -4,6 +4,7 @@ import controller.AbstractController;
 import http.HttpRequest;
 import http.HttpResponse;
 import http.cookie.HttpCookies;
+import model.User;
 import service.user.UserService;
 
 import java.io.IOException;
@@ -19,15 +20,14 @@ public class LoginController extends AbstractController {
   @Override
   protected void doPost(HttpRequest request, HttpResponse response) throws IOException {
 
-    boolean logined = userService.login(request);
+    User user = userService.login(request);
 
-    HttpCookies cookies = new HttpCookies();
+    if (user != null) {
+      request.getSession().addAttribute("user", user);
+    }
 
-    cookies.addCookie("logined", logined);
+    String redirect = user != null ? "/index.html" : "/user/login_failed.html";
 
-    String redirect = logined ? "/index.html" : "/user/login_failed.html";
-
-    response.getHeaders().setCookies(cookies);
     response.sendRedirect(redirect);
   }
 }

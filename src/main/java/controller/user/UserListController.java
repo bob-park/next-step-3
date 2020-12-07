@@ -4,6 +4,7 @@ import controller.AbstractController;
 import http.HttpRequest;
 import http.HttpResponse;
 import http.constants.HttpMediaType;
+import http.session.HttpSession;
 import model.User;
 import service.user.UserService;
 
@@ -20,9 +21,9 @@ public class UserListController extends AbstractController {
   @Override
   protected void doGet(HttpRequest request, HttpResponse response) throws IOException {
 
-    boolean isLogin = Boolean.parseBoolean(request.getHeaders().getCookies().getCookie("logined"));
+    HttpSession session = request.getSession();
 
-    if (isLogin) {
+    if (session.getAttribute("user") != null) {
 
       StringBuilder builder = new StringBuilder();
 

@@ -5,7 +5,9 @@ import exception.http.InvalidRequestUriFormatException;
 import http.constants.HttpMediaType;
 import http.constants.HttpMethod;
 import http.constants.HttpVersion;
+import http.cookie.HttpCookies;
 import http.header.HttpHeaders;
+import http.session.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import util.HttpRequestUtils;
@@ -16,6 +18,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -66,6 +69,11 @@ public class HttpRequest {
    * Message Body
    */
   private String body;
+
+  /*
+   * session
+   */
+  private HttpSession session;
 
   public HttpRequest(InputStream in) throws IOException {
 
@@ -171,6 +179,14 @@ public class HttpRequest {
             URLDecoder.decode(matcher.group(QUERY_STRING_VALUE_GROUP), StandardCharsets.UTF_8));
       }
     }
+  }
+
+  public void setSession(HttpSession session) {
+    this.session = session;
+  }
+
+  public HttpSession getSession() {
+    return session;
   }
 
   private boolean checkRequestEnd(String line) {

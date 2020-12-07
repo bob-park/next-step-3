@@ -2,8 +2,12 @@ package controller;
 
 import http.HttpRequest;
 import http.HttpResponse;
+import http.HttpSessions;
+import http.cookie.HttpCookies;
+import http.header.HttpHeaders;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public abstract class AbstractController implements Controller {
 
@@ -17,6 +21,7 @@ public abstract class AbstractController implements Controller {
 
   @Override
   public void service(HttpRequest request, HttpResponse response) throws IOException {
+
     switch (request.getMethod()) {
       case GET:
         doGet(request, response);
@@ -30,4 +35,5 @@ public abstract class AbstractController implements Controller {
         break;
     }
   }
+
 }

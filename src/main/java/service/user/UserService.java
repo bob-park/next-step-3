@@ -31,7 +31,7 @@ public class UserService {
     DataBase.addUser(user);
   }
 
-  public boolean login(HttpRequest httpRequest) {
+  public User login(HttpRequest httpRequest) {
 
     Map<String, String> requestParam = httpRequest.getParams();
 
@@ -40,11 +40,11 @@ public class UserService {
 
     User user = DataBase.findUserById(userId);
 
-    if (user == null) {
-      return false;
+    if (password.equals(user.getPassword())) {
+      return user;
     }
 
-    return password.equals(user.getPassword());
+    return null;
   }
 
   public List<User> findAll() {
