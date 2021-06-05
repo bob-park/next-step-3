@@ -17,4 +17,5 @@ public enum HttpMethod {
         .findAny()
         .orElseThrow(() -> new NotSupportHttpMethodException(method));
   }
+
 }
