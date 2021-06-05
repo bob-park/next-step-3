@@ -92,7 +92,7 @@ public class HttpRequest {
       return this;
     }
 
-    public Builder version(String requestURI) {
+    public Builder requestURI(String requestURI) {
       this.requestURI = requestURI;
       return this;
     }
