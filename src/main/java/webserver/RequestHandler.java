@@ -34,9 +34,9 @@ public class RequestHandler extends Thread {
         OutputStream out = connection.getOutputStream()) {
       // TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
 
-      HttpRequest httpRequest = readRequest(in);
+      var httpRequest = readRequest(in);
 
-      DataOutputStream dos = new DataOutputStream(out);
+      var dos = new DataOutputStream(out);
 
       byte[] body;
 
@@ -75,9 +75,9 @@ public class RequestHandler extends Thread {
 
   private HttpRequest readRequest(InputStream in) throws IOException {
 
-    HttpRequest.Builder requestBuilder = HttpRequest.builder();
+    var requestBuilder = HttpRequest.builder();
 
-    HttpHeaders headers = new HttpHeaders();
+    var headers = new HttpHeaders();
 
     BufferedReader br = new BufferedReader(new InputStreamReader(in));
 
@@ -101,7 +101,7 @@ public class RequestHandler extends Thread {
           continue;
         }
 
-        HttpHeader header = HttpHeader.parse(headerPair.getKey());
+        var header = HttpHeader.parse(headerPair.getKey());
 
         switch (header) {
           case HOST:
