@@ -6,6 +6,8 @@ public enum HttpHeader {
   HOST("Host"),
   CONNECTION("Connection"),
   ACCEPT("Accept"),
+  CONTENT_LENGTH("Content-Length"),
+  CONTENT_TYPE("Content-Type"),
   ETC("");
   ;
 
