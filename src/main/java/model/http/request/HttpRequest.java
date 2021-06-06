@@ -145,6 +145,8 @@ public class HttpRequest {
 
       String data;
 
+      boolean isRequestLine = true;
+
       while (!checkRequestEnd(data = br.readLine())) {
 
         logger.debug("request data : {}", data);
@@ -152,8 +154,9 @@ public class HttpRequest {
         String[] tokens = data.split(HTTP_REQUEST_LINE_SEPARATOR_REGEX);
 
         // request line
-        if (tokens.length == 3) {
+        if (isRequestLine && tokens.length == 3) {
           setRequestLine(tokens);
+          isRequestLine = false;
         } else {
 
           // set header
