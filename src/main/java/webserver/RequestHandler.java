@@ -42,9 +42,11 @@ public class RequestHandler extends Thread {
       if ("/index.html".equals(httpRequest.getRequestURI())
           && HttpMethod.GET == httpRequest.getMethod()) {
         body = getResponseResourceData(httpRequest.getRequestURI());
+        response200Header(dos, body.length);
       } else if ("/user/form.html".equals(httpRequest.getRequestURI())
           && HttpMethod.GET == httpRequest.getMethod()) {
         body = getResponseResourceData(httpRequest.getRequestURI());
+        response200Header(dos, body.length);
       } else if ("/user/create".equals(httpRequest.getRequestURI())
           && HttpMethod.POST == httpRequest.getMethod()) {
         body = new byte[0];
@@ -52,7 +54,7 @@ public class RequestHandler extends Thread {
         Map<String, String> requestParam =
             HttpRequestUtils.parseQueryString(httpRequest.getContents());
 
-        User user =
+        var user =
             new User(
                 requestParam.get("userId"),
                 requestParam.get("password"),
@@ -61,11 +63,12 @@ public class RequestHandler extends Thread {
 
         log.debug("user : {}", user);
 
+        response302Header(dos);
       } else {
         body = "Hello World".getBytes();
+        response200Header(dos, body.length);
       }
 
-      response200Header(dos, body.length);
       responseBody(dos, body);
     } catch (IOException e) {
       log.error(e.getMessage());
@@ -81,6 +84,16 @@ public class RequestHandler extends Thread {
       dos.writeBytes("HTTP/1.1 200 OK \r\n");
       dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
       dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+      dos.writeBytes("\r\n");
+    } catch (IOException e) {
+      log.error(e.getMessage());
+    }
+  }
+
+  private void response302Header(DataOutputStream dos) {
+    try {
+      dos.writeBytes("HTTP/1.1 302 OK \r\n");
+      dos.writeBytes("Location: /index.html");
       dos.writeBytes("\r\n");
     } catch (IOException e) {
       log.error(e.getMessage());
