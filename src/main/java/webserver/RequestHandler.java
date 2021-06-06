@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
 import model.http.header.*;
 import model.http.request.HttpRequest;
@@ -17,6 +18,7 @@ public class RequestHandler extends Thread {
 
   private static final String HTTP_REQUEST_LINE_SEPARATOR_REGEX = "\\s";
   private static final String HTTP_HEADER_ACCEPT_SEPARATOR_REGEX = ";";
+  private static final String HTTP_REQUEST_QUERY_STRING_SEPARATOR = "\\?";
 
   private Socket connection;
 
@@ -40,8 +42,12 @@ public class RequestHandler extends Thread {
 
       byte[] body;
 
-      if ("/index.html".equals(httpRequest.getRequestURI())) {
-        body = Files.readAllBytes(Path.of("./webapp" + httpRequest.getRequestURI()));
+      if ("/index.html".equals(httpRequest.getRequestURI())
+          && HttpMethod.GET == httpRequest.getMethod()) {
+        body = getResponseResourceData(httpRequest.getRequestURI());
+      } else if ("/user/form.html".equals(httpRequest.getRequestURI())
+          && HttpMethod.GET == httpRequest.getMethod()) {
+        body = getResponseResourceData(httpRequest.getRequestURI());
       } else {
         body = "Hello World".getBytes();
       }
@@ -51,6 +57,10 @@ public class RequestHandler extends Thread {
     } catch (IOException e) {
       log.error(e.getMessage());
     }
+  }
+
+  private byte[] getResponseResourceData(String path) throws IOException {
+    return Files.readAllBytes(Path.of("./webapp" + path));
   }
 
   private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {
@@ -90,12 +100,26 @@ public class RequestHandler extends Thread {
 
       // request line
       if (tokens.length == 3) {
+
+        String methodStr = tokens[0];
+        String uriStr = tokens[1];
+        String versionStr = tokens[2];
+
+        String[] uriTokens = uriStr.split(HTTP_REQUEST_QUERY_STRING_SEPARATOR);
+
         requestBuilder
-            .method(HttpMethod.parse(tokens[0]))
-            .requestURI(tokens[1])
-            .version(HttpVersion.parse(tokens[2]));
+            .method(HttpMethod.parse(methodStr))
+            .requestURI(uriTokens[0])
+            .version(HttpVersion.parse(versionStr));
+
+        if (uriTokens.length > 1) {
+          Map<String, String> requestParamsMap = HttpRequestUtils.parseQueryString(uriTokens[1]);
+
+          requestParamsMap.forEach(requestBuilder::addRequestParam);
+        }
+
       } else {
-        HttpRequestUtils.Pair headerPair = HttpRequestUtils.parseHeader(data);
+        var headerPair = HttpRequestUtils.parseHeader(data);
 
         if (headerPair == null) {
           continue;
