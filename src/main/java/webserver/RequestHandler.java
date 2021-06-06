@@ -92,7 +92,7 @@ public class RequestHandler extends Thread {
 
   private void response302Header(DataOutputStream dos) {
     try {
-      dos.writeBytes("HTTP/1.1 302 OK \r\n");
+      dos.writeBytes("HTTP/1.1 302 Redirect \r\n");
       dos.writeBytes("Location: /index.html");
       dos.writeBytes("\r\n");
     } catch (IOException e) {
