@@ -11,6 +11,7 @@ import model.http.header.*;
 import model.http.request.HttpRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import service.UserService;
 import util.HttpRequestUtils;
 
 public class RequestHandler extends Thread {
@@ -23,6 +24,7 @@ public class RequestHandler extends Thread {
     this.connection = connectionSocket;
   }
 
+  @Override
   public void run() {
     log.debug(
         "New Client Connect! Connected IP : {}, Port : {}",
@@ -32,6 +34,8 @@ public class RequestHandler extends Thread {
     try (InputStream in = connection.getInputStream();
         OutputStream out = connection.getOutputStream()) {
       // TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
+
+      UserService userService = new UserService();
 
       var httpRequest = HttpRequest.builder(in).build();
 
@@ -54,16 +58,35 @@ public class RequestHandler extends Thread {
         Map<String, String> requestParam =
             HttpRequestUtils.parseQueryString(httpRequest.getContents());
 
-        var user =
+        userService.save(
             new User(
                 requestParam.get("userId"),
                 requestParam.get("password"),
                 requestParam.get("name"),
-                requestParam.get("email"));
+                requestParam.get("email")));
 
-        log.debug("user : {}", user);
+        response302Header(dos, "/index.html");
+      } else if ("/user/login.html".equals(httpRequest.getRequestURI())
+          && HttpMethod.GET == httpRequest.getMethod()) {
+        body = getResponseResourceData(httpRequest.getRequestURI());
+        response200Header(dos, body.length);
+      } else if ("/user/login".equals(httpRequest.getRequestURI())
+          && HttpMethod.POST == httpRequest.getMethod()) {
+        body = new byte[0];
 
-        response302Header(dos);
+        Map<String, String> requestParam =
+            HttpRequestUtils.parseQueryString(httpRequest.getContents());
+
+        if (userService.login(requestParam.get("userId"), requestParam.get("password"))) {
+          response302Header(dos, "/index.html", "logined=true; Path=/");
+        } else {
+          response302Header(dos, "/user/login_failed.html", "logined=false; Path=/");
+        }
+
+      } else if ("/user/login_failed.html".equals(httpRequest.getRequestURI())
+          && HttpMethod.GET == httpRequest.getMethod()) {
+        body = getResponseResourceData(httpRequest.getRequestURI());
+        response200Header(dos, body.length);
       } else {
         body = "Hello World".getBytes();
         response200Header(dos, body.length);
@@ -90,10 +113,21 @@ public class RequestHandler extends Thread {
     }
   }
 
-  private void response302Header(DataOutputStream dos) {
+  private void response302Header(DataOutputStream dos, String redirect) {
     try {
       dos.writeBytes("HTTP/1.1 302 Redirect \r\n");
-      dos.writeBytes("Location: /index.html");
+      dos.writeBytes("Location: " + redirect + "\r\n");
+      dos.writeBytes("\r\n");
+    } catch (IOException e) {
+      log.error(e.getMessage());
+    }
+  }
+
+  private void response302Header(DataOutputStream dos, String redirect, String cookie) {
+    try {
+      dos.writeBytes("HTTP/1.1 302 Redirect \r\n");
+      dos.writeBytes("Location: " + redirect + "\r\n");
+      dos.writeBytes("Set-Cookie: " + cookie + "\r\n");
       dos.writeBytes("\r\n");
     } catch (IOException e) {
       log.error(e.getMessage());
