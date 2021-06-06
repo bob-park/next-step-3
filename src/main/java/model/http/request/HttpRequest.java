@@ -5,12 +5,18 @@ import model.http.header.HttpHeaders;
 import model.http.header.HttpMethod;
 import model.http.header.HttpVersion;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 public class HttpRequest {
 
   // * Request Line
   private final HttpMethod method;
   private final String requestURI;
   private final HttpVersion version;
+
+  private final Map<String, String> requestParams;
 
   // * general header
   private final String requestHost;
@@ -24,6 +30,7 @@ public class HttpRequest {
         builder.method,
         builder.requestURI,
         builder.version,
+        builder.requestParams,
         builder.requestHost,
         builder.connection,
         builder.headers);
@@ -33,12 +40,14 @@ public class HttpRequest {
       HttpMethod method,
       String requestURI,
       HttpVersion version,
+      Map<String, String> requestParams,
       String requestHost,
       HttpConnection connection,
       HttpHeaders headers) {
     this.method = method;
     this.requestURI = requestURI;
     this.version = version;
+    this.requestParams = requestParams == null ? Collections.emptyMap() : requestParams;
     this.requestHost = requestHost;
     this.connection = connection;
     this.headers = headers;
@@ -54,6 +63,10 @@ public class HttpRequest {
 
   public String getRequestURI() {
     return requestURI;
+  }
+
+  public Map<String, String> getRequestParams() {
+    return requestParams;
   }
 
   public HttpVersion getVersion() {
@@ -73,19 +86,26 @@ public class HttpRequest {
   }
 
   public static class Builder {
-    // * Request Line
+
     private HttpMethod method;
     private String requestURI;
     private HttpVersion version;
 
-    // * general header
+    private final Map<String, String> requestParams = new HashMap<>();
+
     private String requestHost;
     private HttpConnection connection;
 
-    // * request header
     private HttpHeaders headers;
 
     private Builder() {}
+
+    public Builder addRequestParam(String key, String value) {
+
+      requestParams.put(key, value);
+
+      return this;
+    }
 
     public Builder method(HttpMethod method) {
       this.method = method;
