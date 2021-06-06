@@ -48,6 +48,12 @@ public class RequestHandler extends Thread {
       } else if ("/user/form.html".equals(httpRequest.getRequestURI())
           && HttpMethod.GET == httpRequest.getMethod()) {
         body = getResponseResourceData(httpRequest.getRequestURI());
+      } else if ("/user/create".equals(httpRequest.getRequestURI())) {
+
+        // TODO 사용자 추가
+        httpRequest.getRequestParams().forEach((key, value) -> log.debug("{} : {}", key, value));
+
+        body = new byte[0];
       } else {
         body = "Hello World".getBytes();
       }
