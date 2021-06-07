@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 
+import static util.CommonUtils.equalsIgnoreCase;
 import static util.CommonUtils.isEmpty;
 
 public class UserService {
@@ -26,7 +27,7 @@ public class UserService {
       return false;
     }
 
-    return user.getPassword().equals(password);
+    return equalsIgnoreCase(user.getPassword(), password);
   }
 
   public Collection<User> getUserList() {
