@@ -11,4 +11,8 @@ public class CommonUtils {
 
     return str.isBlank();
   }
+
+  public static boolean isNotBlank(String str) {
+    return !isBlank(str);
+  }
 }
