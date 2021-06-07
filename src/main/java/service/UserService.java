@@ -5,6 +5,8 @@ import model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
+
 public class UserService {
 
   private final Logger logger = LoggerFactory.getLogger(getClass());
@@ -23,5 +25,9 @@ public class UserService {
     }
 
     return user.getPassword().equals(password);
+  }
+
+  public Collection<User> getUserList() {
+    return DataBase.findAll();
   }
 }

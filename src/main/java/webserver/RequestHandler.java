@@ -2,19 +2,22 @@ package webserver;
 
 import java.io.*;
 import java.net.Socket;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
 import model.User;
 import model.http.header.*;
+import model.http.request.Cookie;
 import model.http.request.HttpRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.UserService;
 import util.HttpRequestUtils;
 
-import static util.CommonUtils.isNotBlank;
+import static util.CommonUtils.*;
 
 public class RequestHandler extends Thread {
 
@@ -42,6 +45,7 @@ public class RequestHandler extends Thread {
       // TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
 
       var httpRequest = HttpRequest.builder(in).build();
+      var requestHeader = httpRequest.getHeaders();
 
       var dos = new DataOutputStream(out);
 
@@ -91,6 +95,50 @@ public class RequestHandler extends Thread {
           && HttpMethod.GET == httpRequest.getMethod()) {
         body = getResponseResourceData(httpRequest.getRequestURI());
         response200Header(dos, body.length);
+      } else if ("/user/list".equals(httpRequest.getRequestURI())
+          && HttpMethod.GET == httpRequest.getMethod()) {
+
+        Cookie cookie = requestHeader.getCookie("logined");
+
+        boolean isLoggedIn = isNotEmpty(cookie) && Boolean.parseBoolean(cookie.getValue());
+
+        if (isLoggedIn) {
+          var userListBuilder = new StringBuilder();
+
+          userListBuilder.append(
+              "<table><tr><th>userId</th><th>password</th><th>name</th><th>email</th></tr>");
+
+          userService
+              .getUserList()
+              .forEach(
+                  user ->
+                      userListBuilder
+                          .append("<tr>")
+                          .append("<td>")
+                          .append(user.getUserId())
+                          .append("</td>")
+                          .append("<td>")
+                          .append(user.getPassword())
+                          .append("</td>")
+                          .append("<td>")
+                          .append(user.getName())
+                          .append("</td>")
+                          .append("<td>")
+                          .append(user.getEmail())
+                          .append("</td>")
+                          .append("</tr>"));
+
+          userListBuilder.append("</table>");
+
+          body = userListBuilder.toString().getBytes();
+
+          response200Header(dos, body.length);
+
+        } else {
+          body = new byte[0];
+          response302Header(dos, "/user/login.html");
+        }
+
       } else {
         body = "Hello World".getBytes();
         response200Header(dos, body.length);
