@@ -1,23 +1,27 @@
 package webserver;
 
-import java.io.*;
-import java.net.Socket;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Map;
-
 import model.User;
-import model.http.header.*;
 import model.http.request.Cookie;
+import model.http.request.HttpMethod;
 import model.http.request.HttpRequest;
+import model.http.request.MediaType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.UserService;
 import util.HttpRequestUtils;
 
-import static util.CommonUtils.*;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collection;
+import java.util.Map;
+
+import static util.CommonUtils.isNotBlank;
+import static util.CommonUtils.isNotEmpty;
 
 public class RequestHandler extends Thread {
 
@@ -51,15 +55,7 @@ public class RequestHandler extends Thread {
 
       byte[] body;
 
-      if ("/index.html".equals(httpRequest.getRequestURI())
-          && HttpMethod.GET == httpRequest.getMethod()) {
-        body = getResponseResourceData(httpRequest.getRequestURI());
-        response200Header(dos, body.length);
-      } else if ("/user/form.html".equals(httpRequest.getRequestURI())
-          && HttpMethod.GET == httpRequest.getMethod()) {
-        body = getResponseResourceData(httpRequest.getRequestURI());
-        response200Header(dos, body.length);
-      } else if ("/user/create".equals(httpRequest.getRequestURI())
+      if ("/user/create".equals(httpRequest.getRequestURI())
           && HttpMethod.POST == httpRequest.getMethod()) {
         body = new byte[0];
 
@@ -74,10 +70,6 @@ public class RequestHandler extends Thread {
                 requestParam.get("email")));
 
         response302Header(dos, "/index.html");
-      } else if ("/user/login.html".equals(httpRequest.getRequestURI())
-          && HttpMethod.GET == httpRequest.getMethod()) {
-        body = getResponseResourceData(httpRequest.getRequestURI());
-        response200Header(dos, body.length);
       } else if ("/user/login".equals(httpRequest.getRequestURI())
           && HttpMethod.POST == httpRequest.getMethod()) {
         body = new byte[0];
@@ -91,10 +83,6 @@ public class RequestHandler extends Thread {
           response302Header(dos, "/user/login_failed.html", "logined=false; Path=/");
         }
 
-      } else if ("/user/login_failed.html".equals(httpRequest.getRequestURI())
-          && HttpMethod.GET == httpRequest.getMethod()) {
-        body = getResponseResourceData(httpRequest.getRequestURI());
-        response200Header(dos, body.length);
       } else if ("/user/list".equals(httpRequest.getRequestURI())
           && HttpMethod.GET == httpRequest.getMethod()) {
 
@@ -140,8 +128,8 @@ public class RequestHandler extends Thread {
         }
 
       } else {
-        body = "Hello World".getBytes();
-        response200Header(dos, body.length);
+        body = getResponseResourceData(httpRequest.getRequestURI());
+        response200ResourceHeader(dos, body.length, httpRequest.getHeaders().getAccept());
       }
 
       responseBody(dos, body);
@@ -159,6 +147,27 @@ public class RequestHandler extends Thread {
       dos.writeBytes("HTTP/1.1 200 OK \r\n");
       dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
       dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+      dos.writeBytes("\r\n");
+    } catch (IOException e) {
+      log.error(e.getMessage());
+    }
+  }
+
+  private void response200ResourceHeader(
+      DataOutputStream dos, int length, Collection<MediaType> accepts) {
+
+    var acceptStr = new StringBuilder();
+
+    accepts.forEach(accept -> acceptStr.append(accept.getValue()).append(","));
+
+    if (acceptStr.lastIndexOf(",") == acceptStr.length() - 1) {
+      acceptStr.deleteCharAt(acceptStr.lastIndexOf(","));
+    }
+
+    try {
+      dos.writeBytes("HTTP/1.1 200 OK \r\n");
+      dos.writeBytes("Content-Type: " + acceptStr + "\r\n");
+      dos.writeBytes("Content-Length: " + length + "\r\n");
       dos.writeBytes("\r\n");
     } catch (IOException e) {
       log.error(e.getMessage());
