@@ -14,6 +14,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import static util.CommonUtils.isBlank;
+
 public class HttpRequest {
 
   private static final String HTTP_REQUEST_LINE_SEPARATOR_REGEX = "\\s";
@@ -145,7 +147,7 @@ public class HttpRequest {
 
       String data;
 
-      boolean isRequestLine = true;
+      var isRequestLine = true;
 
       while (!checkRequestEnd(data = br.readLine())) {
 
@@ -209,7 +211,7 @@ public class HttpRequest {
     }
 
     private boolean checkRequestEnd(String data) {
-      return data == null || "".equals(data) || "\r\n".equals(data);
+      return isBlank(data) || "\r\n".equals(data);
     }
 
     public HttpRequest build() throws IOException {
