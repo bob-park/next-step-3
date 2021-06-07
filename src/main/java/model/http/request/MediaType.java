@@ -1,10 +1,13 @@
-package model.http.header;
+package model.http.request;
 
 import java.util.Arrays;
 
 public enum MediaType {
-  APPLICATION_JSON("application/json"),
   ALL("*/*"),
+  TEXT_HTML("text/html"),
+  TEXT_CSS("text/css"),
+  TEXT_JS("text/js"),
+  APPLICATION_JSON("application/json"),
   ;
 
   private final String value;

@@ -1,4 +1,4 @@
-package model.http.header;
+package model.http.request;
 
 import exception.http.method.NotSupportHttpMethodException;
 
