@@ -1,6 +1,7 @@
 package model.http.header;
 
 import model.http.request.Cookie;
+import model.http.request.MediaType;
 import util.HttpRequestUtils;
 
 import java.util.*;
@@ -10,6 +11,7 @@ import static util.CommonUtils.equalsIgnoreCase;
 public class HttpHeaders {
 
   private static final String HTTP_HEADER_SEPARATOR = ";";
+  private static final String HTTP_MEDIA_TYPE_SEPARATOR = ",";
 
   private static final String HTTP_COOKIES_KEY = "Cookie";
 
@@ -20,18 +22,24 @@ public class HttpHeaders {
     return this;
   }
 
-  public List<MediaType> getAccept() {
+  public MediaType getContentType() {
+    String contentType = headers.get(HttpHeader.CONTENT_TYPE.getName());
+
+    return MediaType.parse(contentType);
+  }
+
+  public Collection<MediaType> getAccept() {
 
     String accepts = headers.get(HttpHeader.ACCEPT.getName());
 
     if (accepts != null) {
 
-      List<MediaType> result = new ArrayList<>();
+      HashSet<MediaType> result = new LinkedHashSet<>();
 
-      String[] tokens = accepts.split(HTTP_HEADER_SEPARATOR);
+      String[] tokens = accepts.split(HTTP_MEDIA_TYPE_SEPARATOR);
 
       for (String token : tokens) {
-        MediaType accept = MediaType.parse(token);
+        var accept = MediaType.parse(token);
 
         result.add(accept);
       }
