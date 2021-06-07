@@ -7,6 +7,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 
+import static util.CommonUtils.isEmpty;
+
 public class UserService {
 
   private final Logger logger = LoggerFactory.getLogger(getClass());
@@ -20,7 +22,7 @@ public class UserService {
 
     User user = DataBase.findUserById(userId);
 
-    if (user == null) {
+    if (isEmpty(user)) {
       return false;
     }
 
