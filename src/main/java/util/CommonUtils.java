@@ -4,6 +4,18 @@ public class CommonUtils {
 
   private CommonUtils() {}
 
+  public static boolean isEmpty(Object o) {
+    if (o == null) {
+      return true;
+    }
+
+    if (o instanceof String) {
+      return isBlank((String) o);
+    }
+
+    return false;
+  }
+
   public static boolean isBlank(String str) {
     if (str == null) {
       return true;
