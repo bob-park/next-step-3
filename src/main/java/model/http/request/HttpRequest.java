@@ -10,64 +10,50 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static util.CommonUtils.isBlank;
 
 public class HttpRequest {
 
+  private final Logger logger = LoggerFactory.getLogger(getClass());
+
   private static final String HTTP_REQUEST_LINE_SEPARATOR_REGEX = "\\s";
   private static final String HTTP_HEADER_ACCEPT_SEPARATOR_REGEX = ";";
   private static final String HTTP_REQUEST_QUERY_STRING_SEPARATOR = "\\?";
 
-  // * Request Line
-  private final HttpMethod method;
-  private final String requestURI;
-  private final HttpVersion version;
+  private final InputStream in;
 
-  private final Map<String, String> requestParams;
+  // * Request Line
+  private HttpMethod method;
+  private String requestURI;
+  private HttpVersion version;
+
+  private final Map<String, String> requestParams = new HashMap<>();
 
   // * general header
-  private final String requestHost;
-  private final HttpConnection connection;
+  private String requestHost;
+  private HttpConnection connection;
 
   // * request header
-  private final HttpHeaders headers;
+  private HttpHeaders headers;
 
   // * request body
-  private final String contents;
+  private String contents;
 
-  private HttpRequest(Builder builder) {
-    this(
-        builder.method,
-        builder.requestURI,
-        builder.version,
-        builder.requestParams,
-        builder.requestHost,
-        builder.connection,
-        builder.headers,
-        builder.contents);
+  private HttpRequest(Builder builder) throws IOException {
+    this(builder.in);
   }
 
-  private HttpRequest(
-      HttpMethod method,
-      String requestURI,
-      HttpVersion version,
-      Map<String, String> requestParams,
-      String requestHost,
-      HttpConnection connection,
-      HttpHeaders headers,
-      String contents) {
-    this.method = method;
-    this.requestURI = requestURI;
-    this.version = version;
-    this.requestParams = requestParams == null ? Collections.emptyMap() : requestParams;
-    this.requestHost = requestHost;
-    this.connection = connection;
-    this.headers = headers;
-    this.contents = contents;
+  private HttpRequest(InputStream in) throws IOException {
+    this.in = in;
+
+    readRequest();
   }
 
   public static Builder builder(InputStream in) {
@@ -110,113 +96,94 @@ public class HttpRequest {
     return headers.getContentLength();
   }
 
+  private void addRequestParam(String key, String value) {
+    requestParams.put(key, value);
+  }
+
+  private void readRequest() throws IOException {
+
+    var httpHeaders = new HttpHeaders();
+
+    var br = new BufferedReader(new InputStreamReader(in));
+
+    String data;
+
+    var isRequestLine = true;
+
+    while (!checkRequestEnd(data = br.readLine())) {
+
+      logger.debug("request data : {}", data);
+
+      String[] tokens = data.split(HTTP_REQUEST_LINE_SEPARATOR_REGEX);
+
+      // request line
+      if (isRequestLine && tokens.length == 3) {
+        setRequestLine(tokens);
+        isRequestLine = false;
+      } else {
+
+        // set header
+        var headerPair = HttpRequestUtils.parseHeader(data);
+
+        if (headerPair == null) {
+          continue;
+        }
+
+        setHeaders(httpHeaders, headerPair);
+      }
+    }
+
+    this.headers = httpHeaders;
+
+    this.contents = getContents(br, httpHeaders.getContentLength());
+  }
+
+  private void setRequestLine(String[] tokens) {
+    String methodStr = tokens[0];
+    String uriStr = tokens[1];
+    String versionStr = tokens[2];
+
+    String[] uriTokens = uriStr.split(HTTP_REQUEST_QUERY_STRING_SEPARATOR);
+
+    this.method = HttpMethod.parse(methodStr);
+    this.requestURI = uriTokens[0];
+    this.version = HttpVersion.parse(versionStr);
+
+    if (uriTokens.length > 1) {
+      Map<String, String> requestParamsMap = HttpRequestUtils.parseQueryString(uriTokens[1]);
+
+      requestParamsMap.forEach(this::addRequestParam);
+    }
+  }
+
+  private void setHeaders(HttpHeaders httpHeaders, HttpRequestUtils.Pair headerPair) {
+
+    var header = HttpHeader.parse(headerPair.getKey());
+
+    if (header == HttpHeader.HOST) {
+      this.requestHost = headerPair.getValue();
+    } else {
+      httpHeaders.addHeader(headerPair.getKey(), headerPair.getValue());
+    }
+  }
+
+  private String getContents(BufferedReader br, long contentLength) throws IOException {
+    return URLDecoder.decode(IOUtils.readData(br, (int) contentLength), StandardCharsets.UTF_8);
+  }
+
+  private boolean checkRequestEnd(String data) {
+    return isBlank(data) || "\r\n".equals(data);
+  }
+
   public static class Builder {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
-
     private final InputStream in;
-    private final Map<String, String> requestParams = new HashMap<>();
-
-    private HttpMethod method;
-    private String requestURI;
-    private HttpVersion version;
-
-    private String requestHost;
-    private HttpConnection connection;
-
-    private HttpHeaders headers;
-
-    private String contents;
 
     private Builder(InputStream in) {
       this.in = in;
     }
 
-    public Builder addRequestParam(String key, String value) {
-
-      requestParams.put(key, value);
-
-      return this;
-    }
-
-    private void readRequest() throws IOException {
-
-      var httpHeaders = new HttpHeaders();
-
-      var br = new BufferedReader(new InputStreamReader(in));
-
-      String data;
-
-      var isRequestLine = true;
-
-      while (!checkRequestEnd(data = br.readLine())) {
-
-        logger.debug("request data : {}", data);
-
-        String[] tokens = data.split(HTTP_REQUEST_LINE_SEPARATOR_REGEX);
-
-        // request line
-        if (isRequestLine && tokens.length == 3) {
-          setRequestLine(tokens);
-          isRequestLine = false;
-        } else {
-
-          // set header
-          var headerPair = HttpRequestUtils.parseHeader(data);
-
-          if (headerPair == null) {
-            continue;
-          }
-
-          setHeaders(httpHeaders, headerPair);
-        }
-      }
-
-      this.headers = httpHeaders;
-
-      this.contents = getContents(br, httpHeaders.getContentLength());
-    }
-
-    private void setRequestLine(String[] tokens) {
-      String methodStr = tokens[0];
-      String uriStr = tokens[1];
-      String versionStr = tokens[2];
-
-      String[] uriTokens = uriStr.split(HTTP_REQUEST_QUERY_STRING_SEPARATOR);
-
-      this.method = HttpMethod.parse(methodStr);
-      this.requestURI = uriTokens[0];
-      this.version = HttpVersion.parse(versionStr);
-
-      if (uriTokens.length > 1) {
-        Map<String, String> requestParamsMap = HttpRequestUtils.parseQueryString(uriTokens[1]);
-
-        requestParamsMap.forEach(this::addRequestParam);
-      }
-    }
-
-    private void setHeaders(HttpHeaders httpHeaders, HttpRequestUtils.Pair headerPair) {
-
-      var header = HttpHeader.parse(headerPair.getKey());
-
-      if (header == HttpHeader.HOST) {
-        this.requestHost = headerPair.getValue();
-      } else {
-        httpHeaders.addHeader(headerPair.getKey(), headerPair.getValue());
-      }
-    }
-
-    private String getContents(BufferedReader br, long contentLength) throws IOException {
-      return IOUtils.readData(br, (int) contentLength);
-    }
-
-    private boolean checkRequestEnd(String data) {
-      return isBlank(data) || "\r\n".equals(data);
-    }
-
     public HttpRequest build() throws IOException {
-      readRequest();
-
       return new HttpRequest(this);
     }
   }
