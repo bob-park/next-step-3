@@ -22,8 +22,12 @@ public class RequestHandler extends Thread {
 
   private Socket connection;
 
+  private final UserService userService;
+
   public RequestHandler(Socket connectionSocket) {
     this.connection = connectionSocket;
+
+    this.userService = new UserService();
   }
 
   @Override
@@ -36,8 +40,6 @@ public class RequestHandler extends Thread {
     try (InputStream in = connection.getInputStream();
         OutputStream out = connection.getOutputStream()) {
       // TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
-
-      UserService userService = new UserService();
 
       var httpRequest = HttpRequest.builder(in).build();
 
