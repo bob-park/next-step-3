@@ -14,6 +14,8 @@ import org.slf4j.LoggerFactory;
 import service.UserService;
 import util.HttpRequestUtils;
 
+import static util.CommonUtils.isNotBlank;
+
 public class RequestHandler extends Thread {
 
   private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
@@ -114,20 +116,18 @@ public class RequestHandler extends Thread {
   }
 
   private void response302Header(DataOutputStream dos, String redirect) {
-    try {
-      dos.writeBytes("HTTP/1.1 302 Redirect \r\n");
-      dos.writeBytes("Location: " + redirect + "\r\n");
-      dos.writeBytes("\r\n");
-    } catch (IOException e) {
-      log.error(e.getMessage());
-    }
+    response302Header(dos, redirect, null);
   }
 
   private void response302Header(DataOutputStream dos, String redirect, String cookie) {
     try {
       dos.writeBytes("HTTP/1.1 302 Redirect \r\n");
       dos.writeBytes("Location: " + redirect + "\r\n");
-      dos.writeBytes("Set-Cookie: " + cookie + "\r\n");
+
+      if (isNotBlank(cookie)) {
+        dos.writeBytes("Set-Cookie: " + cookie + "\r\n");
+      }
+
       dos.writeBytes("\r\n");
     } catch (IOException e) {
       log.error(e.getMessage());
