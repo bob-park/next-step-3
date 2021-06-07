@@ -16,6 +16,10 @@ public class CommonUtils {
     return false;
   }
 
+  public static boolean isNotEmpty(Object o) {
+    return !isEmpty(o);
+  }
+
   public static boolean isBlank(String str) {
     if (str == null) {
       return true;
