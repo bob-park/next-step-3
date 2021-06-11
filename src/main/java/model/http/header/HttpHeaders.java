@@ -89,4 +89,8 @@ public class HttpHeaders {
   public String getHeader(String header) {
     return headers.get(header);
   }
+
+  public String getHeader(HttpHeader header) {
+    return getHeader(header.getName());
+  }
 }
