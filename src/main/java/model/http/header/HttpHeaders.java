@@ -85,4 +85,8 @@ public class HttpHeaders {
   public Map<String, String> getHeaders() {
     return headers;
   }
+
+  public String getHeader(String header) {
+    return headers.get(header);
+  }
 }
