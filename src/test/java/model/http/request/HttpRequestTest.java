@@ -31,7 +31,24 @@ class HttpRequestTest {
         () -> assertThat(request.getMethod()).isEqualTo(HttpMethod.GET),
         () -> assertThat(request.getRequestURI()).isEqualTo("/user/create"),
         () ->
-            assertThat(request.getHeaders().getHeader(HttpHeader.CONNECTION.getName()))
+            assertThat(request.getHeaders().getHeader(HttpHeader.CONNECTION))
+                .isEqualTo("keep-alive"),
+        () -> assertThat(request.getRequestParam("userId")).isEqualTo("javajigi"));
+  }
+
+  @DisplayName("http post test")
+  @ParameterizedTest
+  @ValueSource(strings = "HTTP_POST.txt")
+  void requestPost(String fileName) throws IOException {
+    InputStream in = new FileInputStream(testDirectory + "/" + fileName);
+
+    HttpRequest request = HttpRequest.builder(in).build();
+
+    assertAll(
+        () -> assertThat(request.getMethod()).isEqualTo(HttpMethod.POST),
+        () -> assertThat(request.getRequestURI()).isEqualTo("/user/create"),
+        () ->
+            assertThat(request.getHeaders().getHeader(HttpHeader.CONNECTION))
                 .isEqualTo("keep-alive"),
         () -> assertThat(request.getRequestParam("userId")).isEqualTo("javajigi"));
   }
