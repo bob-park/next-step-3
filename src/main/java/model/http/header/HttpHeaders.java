@@ -1,7 +1,7 @@
 package model.http.header;
 
 import model.http.request.Cookie;
-import model.http.request.MediaType;
+import model.http.type.MediaType;
 import util.HttpRequestUtils;
 
 import java.util.*;

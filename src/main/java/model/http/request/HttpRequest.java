@@ -1,6 +1,9 @@
 package model.http.request;
 
 import model.http.header.*;
+import model.http.type.HttpConnection;
+import model.http.type.HttpMethod;
+import model.http.type.HttpVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import util.HttpRequestUtils;
