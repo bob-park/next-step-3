@@ -4,6 +4,7 @@ import model.http.header.*;
 import model.http.type.HttpConnection;
 import model.http.type.HttpMethod;
 import model.http.type.HttpVersion;
+import model.http.type.MediaType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import util.HttpRequestUtils;
@@ -19,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static util.CommonUtils.isBlank;
+import static util.CommonUtils.isNotBlank;
 
 public class HttpRequest {
 
@@ -105,6 +107,10 @@ public class HttpRequest {
     requestParams.put(key, value);
   }
 
+  private void addRequestParamAll(Map<String, String> params) {
+    this.requestParams.putAll(params);
+  }
+
   private void readRequest() throws IOException {
 
     var httpHeaders = new HttpHeaders();
@@ -141,6 +147,13 @@ public class HttpRequest {
     this.headers = httpHeaders;
 
     this.contents = getContents(br, httpHeaders.getContentLength());
+
+    if (isNotBlank(this.contents)
+        && this.headers.getContentType() == MediaType.APPLICATION_X_WWW_FORM_URLENCODED) {
+      addRequestParamAll(
+          HttpRequestUtils.parseQueryString(
+              URLDecoder.decode(this.contents, StandardCharsets.UTF_8)));
+    }
   }
 
   private void setRequestLine(String[] tokens) {
@@ -173,7 +186,7 @@ public class HttpRequest {
   }
 
   private String getContents(BufferedReader br, long contentLength) throws IOException {
-    return URLDecoder.decode(IOUtils.readData(br, (int) contentLength), StandardCharsets.UTF_8);
+    return IOUtils.readData(br, (int) contentLength);
   }
 
   private boolean checkRequestEnd(String data) {
