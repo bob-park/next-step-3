@@ -73,6 +73,10 @@ public class HttpRequest {
     return requestParams;
   }
 
+  public String getRequestParam(String param) {
+    return requestParams.get(param);
+  }
+
   public HttpVersion getVersion() {
     return version;
   }
