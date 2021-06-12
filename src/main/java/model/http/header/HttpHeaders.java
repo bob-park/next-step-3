@@ -1,13 +1,8 @@
 package model.http.header;
 
-import model.http.request.HttpCookie;
-import model.http.request.HttpCookies;
 import model.http.type.MediaType;
-import util.HttpRequestUtils;
 
 import java.util.*;
-
-import static util.CommonUtils.equalsIgnoreCase;
 
 public class HttpHeaders {
 
@@ -23,10 +18,10 @@ public class HttpHeaders {
     return this;
   }
 
-  public Optional<MediaType> getContentType() {
+  public MediaType getContentType() {
     String contentType = headers.get(HttpHeader.CONTENT_TYPE.getName());
 
-    return MediaType.parse(contentType);
+    return MediaType.parse(contentType).orElse(null);
   }
 
   public Collection<MediaType> getAccept() {
