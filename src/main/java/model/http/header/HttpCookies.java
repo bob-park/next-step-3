@@ -1,4 +1,4 @@
-package model.http.request;
+package model.http.header;
 
 import util.CommonUtils;
 

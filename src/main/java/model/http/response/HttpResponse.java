@@ -1,7 +1,10 @@
-package model.http.request;
+package model.http.response;
 
 import model.http.header.HttpHeader;
 import model.http.header.HttpHeaders;
+import model.http.header.HttpCookie;
+import model.http.header.HttpCookies;
+import model.http.request.HttpRequest;
 import model.http.type.HttpStatus;
 import model.http.type.MediaType;
 import org.slf4j.Logger;
@@ -87,6 +90,15 @@ public class HttpResponse {
   }
 
   /**
+   * error 내보내는 메소드
+   *
+   * @param status
+   */
+  public void sendError(HttpStatus status) {
+    send(status, null, null);
+  }
+
+  /**
    * 실제로 response 를 조합하여 보내는 메소드
    *
    * @param status
@@ -96,9 +108,9 @@ public class HttpResponse {
     String contentTypeStr = null;
 
     Collection<MediaType> contentTypes =
-        headers.getContentType().isEmpty()
+        isEmpty(headers.getContentType())
             ? request.getHeaders().getAccept()
-            : Collections.singletonList(headers.getContentType().get());
+            : Collections.singletonList(headers.getContentType());
 
     var contentTypeBuilder = new StringBuilder();
 

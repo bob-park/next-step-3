@@ -1,13 +1,12 @@
 package model.http.request;
 
+import model.http.header.HttpCookies;
 import model.http.header.HttpHeader;
 import model.http.header.HttpHeaders;
 import model.http.type.HttpConnection;
 import model.http.type.HttpMethod;
 import model.http.type.HttpVersion;
 import model.http.type.MediaType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import util.HttpRequestUtils;
 import util.IOUtils;
 
@@ -23,8 +22,6 @@ import java.util.Map;
 import static util.CommonUtils.isBlank;
 
 public class HttpRequest {
-
-  private final Logger logger = LoggerFactory.getLogger(getClass());
 
   private static final String HTTP_REQUEST_LINE_SEPARATOR_REGEX = "\\s";
   private static final String HTTP_REQUEST_QUERY_STRING_SEPARATOR = "\\?";
@@ -122,8 +119,6 @@ public class HttpRequest {
 
     while (!checkRequestEnd(data = br.readLine())) {
 
-      logger.debug("request data : {}", data);
-
       String[] tokens = data.split(HTTP_REQUEST_LINE_SEPARATOR_REGEX);
 
       // request line
@@ -147,8 +142,7 @@ public class HttpRequest {
 
     this.contents = getContents(br, httpHeaders.getContentLength());
 
-    if (this.headers.getContentType().isPresent()
-        && this.headers.getContentType().get() == MediaType.APPLICATION_X_WWW_FORM_URLENCODED) {
+    if (MediaType.APPLICATION_X_WWW_FORM_URLENCODED == this.headers.getContentType()) {
       addRequestParamAll(
           HttpRequestUtils.parseQueryString(
               URLDecoder.decode(this.contents, StandardCharsets.UTF_8)));

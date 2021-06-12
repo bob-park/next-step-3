@@ -1,4 +1,4 @@
-package model.http.request;
+package model.http.header;
 
 public class HttpCookie {
 
