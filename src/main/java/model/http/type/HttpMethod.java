@@ -18,4 +18,8 @@ public enum HttpMethod {
         .orElseThrow(() -> new NotSupportHttpMethodException(method));
   }
 
+  @Override
+  public String toString() {
+    return this.name();
+  }
 }
