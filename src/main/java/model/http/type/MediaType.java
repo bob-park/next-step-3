@@ -1,6 +1,7 @@
 package model.http.type;
 
 import java.util.Arrays;
+import java.util.Optional;
 
 public enum MediaType {
   ALL("*/*"),
@@ -17,11 +18,10 @@ public enum MediaType {
     this.value = value;
   }
 
-  public static MediaType parse(String mediaType) {
+  public static Optional<MediaType> parse(String mediaType) {
     return Arrays.stream(MediaType.values())
         .filter(type -> type.getValue().equals(mediaType))
-        .findAny()
-        .orElse(ALL);
+        .findAny();
   }
 
   public String getValue() {
