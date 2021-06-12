@@ -1,6 +1,7 @@
 package model.http.request;
 
-import model.http.header.*;
+import model.http.header.HttpHeader;
+import model.http.header.HttpHeaders;
 import model.http.type.HttpConnection;
 import model.http.type.HttpMethod;
 import model.http.type.HttpVersion;
@@ -20,14 +21,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static util.CommonUtils.isBlank;
-import static util.CommonUtils.isNotBlank;
 
 public class HttpRequest {
 
   private final Logger logger = LoggerFactory.getLogger(getClass());
 
   private static final String HTTP_REQUEST_LINE_SEPARATOR_REGEX = "\\s";
-  private static final String HTTP_HEADER_ACCEPT_SEPARATOR_REGEX = ";";
   private static final String HTTP_REQUEST_QUERY_STRING_SEPARATOR = "\\?";
 
   private final InputStream in;
@@ -148,8 +147,8 @@ public class HttpRequest {
 
     this.contents = getContents(br, httpHeaders.getContentLength());
 
-    if (isNotBlank(this.contents)
-        && this.headers.getContentType() == MediaType.APPLICATION_X_WWW_FORM_URLENCODED) {
+    if (this.headers.getContentType().isPresent()
+        && this.headers.getContentType().get() == MediaType.APPLICATION_X_WWW_FORM_URLENCODED) {
       addRequestParamAll(
           HttpRequestUtils.parseQueryString(
               URLDecoder.decode(this.contents, StandardCharsets.UTF_8)));
@@ -180,6 +179,17 @@ public class HttpRequest {
 
     if (header == HttpHeader.HOST) {
       this.requestHost = headerPair.getValue();
+    } else if (header == HttpHeader.COOKIE) {
+
+      var cookies = new HttpCookies();
+
+      Map<String, String> cookieMap = HttpRequestUtils.parseCookies(headerPair.getValue());
+
+      for (Map.Entry<String, String> entry : cookieMap.entrySet()) {
+        cookies.addCookie(entry.getKey(), entry.getValue());
+      }
+
+      httpHeaders.setCookies(cookies);
     } else {
       httpHeaders.addHeader(headerPair.getKey(), headerPair.getValue());
     }
