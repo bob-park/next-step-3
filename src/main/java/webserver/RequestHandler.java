@@ -1,7 +1,9 @@
 package webserver;
 
 import model.User;
-import model.http.request.Cookie;
+import model.http.header.HttpHeaders;
+import model.http.request.HttpCookie;
+import model.http.request.HttpResponse;
 import model.http.type.HttpMethod;
 import model.http.request.HttpRequest;
 import model.http.type.MediaType;
@@ -44,57 +46,50 @@ public class RequestHandler extends Thread {
         connection.getInetAddress(),
         connection.getPort());
 
-    try (InputStream in = connection.getInputStream();
-        OutputStream out = connection.getOutputStream()) {
-      // TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
+    try (var in = connection.getInputStream();
+        var out = connection.getOutputStream()) {
 
       var httpRequest = HttpRequest.builder(in).build();
       var requestHeader = httpRequest.getHeaders();
 
-      var dos = new DataOutputStream(out);
-
-      byte[] body;
-
       if ("/user/create".equals(httpRequest.getRequestURI())
           && HttpMethod.POST == httpRequest.getMethod()) {
-        body = new byte[0];
-
-        Map<String, String> requestParam =
-            HttpRequestUtils.parseQueryString(httpRequest.getContents());
 
         userService.save(
             new User(
-                requestParam.get("userId"),
-                requestParam.get("password"),
-                requestParam.get("name"),
-                requestParam.get("email")));
+                httpRequest.getRequestParam("userId"),
+                httpRequest.getRequestParam("password"),
+                httpRequest.getRequestParam("name"),
+                httpRequest.getRequestParam("email")));
 
-        response302Header(dos, "/index.html");
+        HttpResponse.builder(httpRequest, out).build().sendRedirect("/index.html");
+
       } else if ("/user/login".equals(httpRequest.getRequestURI())
           && HttpMethod.POST == httpRequest.getMethod()) {
-        body = new byte[0];
 
-        Map<String, String> requestParam =
-            HttpRequestUtils.parseQueryString(httpRequest.getContents());
+        boolean isLoggedIn =
+            userService.login(
+                httpRequest.getRequestParam("userId"), httpRequest.getRequestParam("password"));
 
-        if (userService.login(requestParam.get("userId"), requestParam.get("password"))) {
-          response302Header(dos, "/index.html", "logined=true; Path=/");
-        } else {
-          response302Header(dos, "/user/login_failed.html", "logined=false; Path=/");
-        }
+        HttpResponse.builder(httpRequest, out)
+            .addCookie("logined", isLoggedIn ? "true" : "false", "/")
+            .build()
+            .sendRedirect(isLoggedIn ? "/index.html" : "/user/login_failed.html");
 
       } else if ("/user/list".equals(httpRequest.getRequestURI())
           && HttpMethod.GET == httpRequest.getMethod()) {
 
-        Cookie cookie = requestHeader.getCookie("logined");
+        var httpCookie = requestHeader.getCookie("logined");
 
-        boolean isLoggedIn = isNotEmpty(cookie) && Boolean.parseBoolean(cookie.getValue());
+        boolean isLoggedIn = isNotEmpty(httpCookie) && Boolean.parseBoolean(httpCookie.getValue());
+
+        var httpResponse = HttpResponse.builder(httpRequest, out).build();
 
         if (isLoggedIn) {
           var userListBuilder = new StringBuilder();
 
           userListBuilder.append(
-              "<table><tr><th>userId</th><th>password</th><th>name</th><th>email</th></tr>");
+              "<table border='1'><tr><th>userId</th><th>password</th><th>name</th><th>email</th></tr>");
 
           userService
               .getUserList()
@@ -118,85 +113,16 @@ public class RequestHandler extends Thread {
 
           userListBuilder.append("</table>");
 
-          body = userListBuilder.toString().getBytes();
-
-          response200Header(dos, body.length);
+          httpResponse.sendBody(userListBuilder.toString());
 
         } else {
-          body = new byte[0];
-          response302Header(dos, "/user/login.html");
+          httpResponse.sendRedirect("/user/login.html");
         }
 
       } else {
-        body = getResponseResourceData(httpRequest.getRequestURI());
-        response200ResourceHeader(dos, body.length, httpRequest.getHeaders().getAccept());
+        HttpResponse.builder(httpRequest, out).build().forward(httpRequest.getRequestURI());
       }
 
-      responseBody(dos, body);
-    } catch (IOException e) {
-      log.error(e.getMessage());
-    }
-  }
-
-  private byte[] getResponseResourceData(String path) throws IOException {
-    return Files.readAllBytes(Path.of("./webapp" + path));
-  }
-
-  private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {
-    try {
-      dos.writeBytes("HTTP/1.1 200 OK \r\n");
-      dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
-      dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
-      dos.writeBytes("\r\n");
-    } catch (IOException e) {
-      log.error(e.getMessage());
-    }
-  }
-
-  private void response200ResourceHeader(
-      DataOutputStream dos, int length, Collection<MediaType> accepts) {
-
-    var acceptStr = new StringBuilder();
-
-    accepts.forEach(accept -> acceptStr.append(accept.getValue()).append(","));
-
-    if (acceptStr.lastIndexOf(",") == acceptStr.length() - 1) {
-      acceptStr.deleteCharAt(acceptStr.lastIndexOf(","));
-    }
-
-    try {
-      dos.writeBytes("HTTP/1.1 200 OK \r\n");
-      dos.writeBytes("Content-Type: " + acceptStr + "\r\n");
-      dos.writeBytes("Content-Length: " + length + "\r\n");
-      dos.writeBytes("\r\n");
-    } catch (IOException e) {
-      log.error(e.getMessage());
-    }
-  }
-
-  private void response302Header(DataOutputStream dos, String redirect) {
-    response302Header(dos, redirect, null);
-  }
-
-  private void response302Header(DataOutputStream dos, String redirect, String cookie) {
-    try {
-      dos.writeBytes("HTTP/1.1 302 Redirect \r\n");
-      dos.writeBytes("Location: " + redirect + "\r\n");
-
-      if (isNotBlank(cookie)) {
-        dos.writeBytes("Set-Cookie: " + cookie + "\r\n");
-      }
-
-      dos.writeBytes("\r\n");
-    } catch (IOException e) {
-      log.error(e.getMessage());
-    }
-  }
-
-  private void responseBody(DataOutputStream dos, byte[] body) {
-    try {
-      dos.write(body, 0, body.length);
-      dos.flush();
     } catch (IOException e) {
       log.error(e.getMessage());
     }
