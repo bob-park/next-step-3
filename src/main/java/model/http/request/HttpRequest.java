@@ -29,15 +29,12 @@ public class HttpRequest {
   private final InputStream in;
 
   // * Request Line
-  private HttpMethod method;
-  private String requestURI;
-  private HttpVersion version;
+  private RequestLine requestLine;
 
   private final Map<String, String> requestParams = new HashMap<>();
 
   // * general header
   private String requestHost;
-  private HttpConnection connection;
 
   // * request header
   private HttpHeaders headers;
@@ -60,11 +57,11 @@ public class HttpRequest {
   }
 
   public HttpMethod getMethod() {
-    return method;
+    return requestLine.getMethod();
   }
 
   public String getRequestURI() {
-    return requestURI;
+    return requestLine.getUri();
   }
 
   public Map<String, String> getRequestParams() {
@@ -76,15 +73,11 @@ public class HttpRequest {
   }
 
   public HttpVersion getVersion() {
-    return version;
+    return requestLine.getVersion();
   }
 
   public String getRequestHost() {
     return requestHost;
-  }
-
-  public HttpConnection getConnection() {
-    return connection;
   }
 
   public HttpHeaders getHeaders() {
@@ -150,15 +143,10 @@ public class HttpRequest {
   }
 
   private void setRequestLine(String[] tokens) {
-    String methodStr = tokens[0];
-    String uriStr = tokens[1];
-    String versionStr = tokens[2];
 
-    String[] uriTokens = uriStr.split(HTTP_REQUEST_QUERY_STRING_SEPARATOR);
+    String[] uriTokens = tokens[1].split(HTTP_REQUEST_QUERY_STRING_SEPARATOR);
 
-    this.method = HttpMethod.parse(methodStr);
-    this.requestURI = uriTokens[0];
-    this.version = HttpVersion.parse(versionStr);
+    this.requestLine = new RequestLine(tokens[0], uriTokens[0], tokens[2]);
 
     if (uriTokens.length > 1) {
       Map<String, String> requestParamsMap = HttpRequestUtils.parseQueryString(uriTokens[1]);
