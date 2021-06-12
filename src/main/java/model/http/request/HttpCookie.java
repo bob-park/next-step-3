@@ -1,13 +1,15 @@
 package model.http.request;
 
-public class Cookie {
+public class HttpCookie {
 
   private final String key;
   private final String value;
+  private final String path;
 
-  public Cookie(String key, String value) {
+  public HttpCookie(String key, String value, String path) {
     this.key = key;
     this.value = value;
+    this.path = path;
   }
 
   public String getKey() {
@@ -16,5 +18,9 @@ public class Cookie {
 
   public String getValue() {
     return value;
+  }
+
+  public String getPath() {
+    return path;
   }
 }
