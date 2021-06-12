@@ -8,8 +8,9 @@ public enum HttpHeader {
   ACCEPT("Accept"),
   CONTENT_LENGTH("Content-Length"),
   CONTENT_TYPE("Content-Type"),
+  COOKIE("Cookie"),
   ETC("");
-  ;
+
 
   private final String name;
 

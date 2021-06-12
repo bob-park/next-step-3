@@ -1,4 +1,4 @@
-package model.http.request;
+package model.http.type;
 
 import exception.http.method.NotSupportHttpMethodException;
 
@@ -18,4 +18,8 @@ public enum HttpMethod {
         .orElseThrow(() -> new NotSupportHttpMethodException(method));
   }
 
+  @Override
+  public String toString() {
+    return this.name();
+  }
 }

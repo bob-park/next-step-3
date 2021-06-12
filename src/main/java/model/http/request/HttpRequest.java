@@ -1,8 +1,12 @@
 package model.http.request;
 
-import model.http.header.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import model.http.header.HttpCookies;
+import model.http.header.HttpHeader;
+import model.http.header.HttpHeaders;
+import model.http.type.HttpConnection;
+import model.http.type.HttpMethod;
+import model.http.type.HttpVersion;
+import model.http.type.MediaType;
 import util.HttpRequestUtils;
 import util.IOUtils;
 
@@ -19,24 +23,18 @@ import static util.CommonUtils.isBlank;
 
 public class HttpRequest {
 
-  private final Logger logger = LoggerFactory.getLogger(getClass());
-
   private static final String HTTP_REQUEST_LINE_SEPARATOR_REGEX = "\\s";
-  private static final String HTTP_HEADER_ACCEPT_SEPARATOR_REGEX = ";";
   private static final String HTTP_REQUEST_QUERY_STRING_SEPARATOR = "\\?";
 
   private final InputStream in;
 
   // * Request Line
-  private HttpMethod method;
-  private String requestURI;
-  private HttpVersion version;
+  private RequestLine requestLine;
 
   private final Map<String, String> requestParams = new HashMap<>();
 
   // * general header
   private String requestHost;
-  private HttpConnection connection;
 
   // * request header
   private HttpHeaders headers;
@@ -59,27 +57,27 @@ public class HttpRequest {
   }
 
   public HttpMethod getMethod() {
-    return method;
+    return requestLine.getMethod();
   }
 
   public String getRequestURI() {
-    return requestURI;
+    return requestLine.getUri();
   }
 
   public Map<String, String> getRequestParams() {
     return requestParams;
   }
 
+  public String getRequestParam(String param) {
+    return requestParams.get(param);
+  }
+
   public HttpVersion getVersion() {
-    return version;
+    return requestLine.getVersion();
   }
 
   public String getRequestHost() {
     return requestHost;
-  }
-
-  public HttpConnection getConnection() {
-    return connection;
   }
 
   public HttpHeaders getHeaders() {
@@ -98,6 +96,10 @@ public class HttpRequest {
     requestParams.put(key, value);
   }
 
+  private void addRequestParamAll(Map<String, String> params) {
+    this.requestParams.putAll(params);
+  }
+
   private void readRequest() throws IOException {
 
     var httpHeaders = new HttpHeaders();
@@ -109,8 +111,6 @@ public class HttpRequest {
     var isRequestLine = true;
 
     while (!checkRequestEnd(data = br.readLine())) {
-
-      logger.debug("request data : {}", data);
 
       String[] tokens = data.split(HTTP_REQUEST_LINE_SEPARATOR_REGEX);
 
@@ -134,18 +134,19 @@ public class HttpRequest {
     this.headers = httpHeaders;
 
     this.contents = getContents(br, httpHeaders.getContentLength());
+
+    if (MediaType.APPLICATION_X_WWW_FORM_URLENCODED == this.headers.getContentType()) {
+      addRequestParamAll(
+          HttpRequestUtils.parseQueryString(
+              URLDecoder.decode(this.contents, StandardCharsets.UTF_8)));
+    }
   }
 
   private void setRequestLine(String[] tokens) {
-    String methodStr = tokens[0];
-    String uriStr = tokens[1];
-    String versionStr = tokens[2];
 
-    String[] uriTokens = uriStr.split(HTTP_REQUEST_QUERY_STRING_SEPARATOR);
+    String[] uriTokens = tokens[1].split(HTTP_REQUEST_QUERY_STRING_SEPARATOR);
 
-    this.method = HttpMethod.parse(methodStr);
-    this.requestURI = uriTokens[0];
-    this.version = HttpVersion.parse(versionStr);
+    this.requestLine = new RequestLine(tokens[0], uriTokens[0], tokens[2]);
 
     if (uriTokens.length > 1) {
       Map<String, String> requestParamsMap = HttpRequestUtils.parseQueryString(uriTokens[1]);
@@ -160,13 +161,24 @@ public class HttpRequest {
 
     if (header == HttpHeader.HOST) {
       this.requestHost = headerPair.getValue();
+    } else if (header == HttpHeader.COOKIE) {
+
+      var cookies = new HttpCookies();
+
+      Map<String, String> cookieMap = HttpRequestUtils.parseCookies(headerPair.getValue());
+
+      for (Map.Entry<String, String> entry : cookieMap.entrySet()) {
+        cookies.addCookie(entry.getKey(), entry.getValue());
+      }
+
+      httpHeaders.setCookies(cookies);
     } else {
       httpHeaders.addHeader(headerPair.getKey(), headerPair.getValue());
     }
   }
 
   private String getContents(BufferedReader br, long contentLength) throws IOException {
-    return URLDecoder.decode(IOUtils.readData(br, (int) contentLength), StandardCharsets.UTF_8);
+    return IOUtils.readData(br, (int) contentLength);
   }
 
   private boolean checkRequestEnd(String data) {

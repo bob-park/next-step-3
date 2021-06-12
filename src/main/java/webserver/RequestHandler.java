@@ -1,40 +1,52 @@
 package webserver;
 
-import model.User;
-import model.http.request.Cookie;
-import model.http.request.HttpMethod;
+import controller.Controller;
+import controller.ResourceController;
+import controller.error.InternalServerErrorController;
+import controller.error.MethodNotAllowedErrorController;
+import controller.error.NotFoundErrorController;
+import controller.user.CreateUserController;
+import controller.user.LoginController;
+import controller.user.UserListController;
+import exception.NotFoundException;
+import exception.http.method.NotSupportHttpMethodException;
 import model.http.request.HttpRequest;
-import model.http.request.MediaType;
+import model.http.response.HttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.UserService;
-import util.HttpRequestUtils;
+import util.FilenameUtils;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.Socket;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 
+import static util.CommonUtils.isEmpty;
 import static util.CommonUtils.isNotBlank;
-import static util.CommonUtils.isNotEmpty;
 
 public class RequestHandler extends Thread {
 
   private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
 
-  private Socket connection;
+  private final Socket connection;
 
-  private final UserService userService;
+  private static final Map<String, Controller> CONTROLLER_MAP = new HashMap<>();
+  private static final ResourceController RESOURCE_CONTROLLER = new ResourceController();
+  private static final NotFoundErrorController NOT_FOUND_CONTROLLER = new NotFoundErrorController();
+  private static final InternalServerErrorController INTERNAL_SERVER_CONTROLLER =
+      new InternalServerErrorController();
+  private static final MethodNotAllowedErrorController METHOD_NOT_ALLOWED_CONTROLLER =
+      new MethodNotAllowedErrorController();
 
   public RequestHandler(Socket connectionSocket) {
     this.connection = connectionSocket;
 
-    this.userService = new UserService();
+    var userService = new UserService();
+
+    CONTROLLER_MAP.put("/user/create", new CreateUserController(userService));
+    CONTROLLER_MAP.put("/user/login", new LoginController(userService));
+    CONTROLLER_MAP.put("/user/list", new UserListController(userService));
   }
 
   @Override
@@ -44,161 +56,53 @@ public class RequestHandler extends Thread {
         connection.getInetAddress(),
         connection.getPort());
 
-    try (InputStream in = connection.getInputStream();
-        OutputStream out = connection.getOutputStream()) {
-      // TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
+    try (var in = connection.getInputStream();
+        var out = connection.getOutputStream()) {
 
       var httpRequest = HttpRequest.builder(in).build();
-      var requestHeader = httpRequest.getHeaders();
 
-      var dos = new DataOutputStream(out);
+      requestMapping(httpRequest, HttpResponse.builder(httpRequest, out).build());
 
-      byte[] body;
-
-      if ("/user/create".equals(httpRequest.getRequestURI())
-          && HttpMethod.POST == httpRequest.getMethod()) {
-        body = new byte[0];
-
-        Map<String, String> requestParam =
-            HttpRequestUtils.parseQueryString(httpRequest.getContents());
-
-        userService.save(
-            new User(
-                requestParam.get("userId"),
-                requestParam.get("password"),
-                requestParam.get("name"),
-                requestParam.get("email")));
-
-        response302Header(dos, "/index.html");
-      } else if ("/user/login".equals(httpRequest.getRequestURI())
-          && HttpMethod.POST == httpRequest.getMethod()) {
-        body = new byte[0];
-
-        Map<String, String> requestParam =
-            HttpRequestUtils.parseQueryString(httpRequest.getContents());
-
-        if (userService.login(requestParam.get("userId"), requestParam.get("password"))) {
-          response302Header(dos, "/index.html", "logined=true; Path=/");
-        } else {
-          response302Header(dos, "/user/login_failed.html", "logined=false; Path=/");
-        }
-
-      } else if ("/user/list".equals(httpRequest.getRequestURI())
-          && HttpMethod.GET == httpRequest.getMethod()) {
-
-        Cookie cookie = requestHeader.getCookie("logined");
-
-        boolean isLoggedIn = isNotEmpty(cookie) && Boolean.parseBoolean(cookie.getValue());
-
-        if (isLoggedIn) {
-          var userListBuilder = new StringBuilder();
-
-          userListBuilder.append(
-              "<table><tr><th>userId</th><th>password</th><th>name</th><th>email</th></tr>");
-
-          userService
-              .getUserList()
-              .forEach(
-                  user ->
-                      userListBuilder
-                          .append("<tr>")
-                          .append("<td>")
-                          .append(user.getUserId())
-                          .append("</td>")
-                          .append("<td>")
-                          .append(user.getPassword())
-                          .append("</td>")
-                          .append("<td>")
-                          .append(user.getName())
-                          .append("</td>")
-                          .append("<td>")
-                          .append(user.getEmail())
-                          .append("</td>")
-                          .append("</tr>"));
-
-          userListBuilder.append("</table>");
-
-          body = userListBuilder.toString().getBytes();
-
-          response200Header(dos, body.length);
-
-        } else {
-          body = new byte[0];
-          response302Header(dos, "/user/login.html");
-        }
-
-      } else {
-        body = getResponseResourceData(httpRequest.getRequestURI());
-        response200ResourceHeader(dos, body.length, httpRequest.getHeaders().getAccept());
-      }
-
-      responseBody(dos, body);
     } catch (IOException e) {
       log.error(e.getMessage());
     }
   }
 
-  private byte[] getResponseResourceData(String path) throws IOException {
-    return Files.readAllBytes(Path.of("./webapp" + path));
-  }
+  private void requestMapping(HttpRequest request, HttpResponse response) {
 
-  private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {
-    try {
-      dos.writeBytes("HTTP/1.1 200 OK \r\n");
-      dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
-      dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
-      dos.writeBytes("\r\n");
-    } catch (IOException e) {
-      log.error(e.getMessage());
-    }
-  }
+    String uri = request.getRequestURI();
 
-  private void response200ResourceHeader(
-      DataOutputStream dos, int length, Collection<MediaType> accepts) {
+    log.debug("method : {}, uri: {}", request.getMethod(), uri);
 
-    var acceptStr = new StringBuilder();
+    boolean isResource = isNotBlank(FilenameUtils.getExtension(uri));
 
-    accepts.forEach(accept -> acceptStr.append(accept.getValue()).append(","));
-
-    if (acceptStr.lastIndexOf(",") == acceptStr.length() - 1) {
-      acceptStr.deleteCharAt(acceptStr.lastIndexOf(","));
+    if (isResource) {
+      RESOURCE_CONTROLLER.service(request, response);
+      return;
     }
 
     try {
-      dos.writeBytes("HTTP/1.1 200 OK \r\n");
-      dos.writeBytes("Content-Type: " + acceptStr + "\r\n");
-      dos.writeBytes("Content-Length: " + length + "\r\n");
-      dos.writeBytes("\r\n");
-    } catch (IOException e) {
-      log.error(e.getMessage());
+      getController(uri).service(request, response);
+    } catch (NotFoundException e) {
+      log.warn(e.getMessage());
+      NOT_FOUND_CONTROLLER.service(request, response);
+    } catch (NotSupportHttpMethodException e) {
+      log.warn(e.getMessage());
+      METHOD_NOT_ALLOWED_CONTROLLER.service(request, response);
+    } catch (Exception e) {
+      log.error("Server Error - {}", e.getMessage(), e);
+      INTERNAL_SERVER_CONTROLLER.service(request, response);
     }
   }
 
-  private void response302Header(DataOutputStream dos, String redirect) {
-    response302Header(dos, redirect, null);
-  }
+  private Controller getController(String uri) {
 
-  private void response302Header(DataOutputStream dos, String redirect, String cookie) {
-    try {
-      dos.writeBytes("HTTP/1.1 302 Redirect \r\n");
-      dos.writeBytes("Location: " + redirect + "\r\n");
+    var controller = CONTROLLER_MAP.get(uri);
 
-      if (isNotBlank(cookie)) {
-        dos.writeBytes("Set-Cookie: " + cookie + "\r\n");
-      }
-
-      dos.writeBytes("\r\n");
-    } catch (IOException e) {
-      log.error(e.getMessage());
+    if (isEmpty(controller)) {
+      throw new NotFoundException(uri);
     }
-  }
 
-  private void responseBody(DataOutputStream dos, byte[] body) {
-    try {
-      dos.write(body, 0, body.length);
-      dos.flush();
-    } catch (IOException e) {
-      log.error(e.getMessage());
-    }
+    return controller;
   }
 }

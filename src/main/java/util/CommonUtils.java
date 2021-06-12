@@ -32,8 +32,7 @@ public class CommonUtils {
     return !isBlank(str);
   }
 
-  public static boolean equalsIgnoreCase(String s1, String s2) {
-
+  public static boolean equals(String s1, String s2) {
     if (s1 == null) {
       return false;
     }
@@ -42,6 +41,18 @@ public class CommonUtils {
       return false;
     }
 
-    return s1.equalsIgnoreCase(s2);
+    return s1.equals(s2);
+  }
+
+  public static boolean equalsIgnoreCase(String s1, String s2) {
+    return equals(defaultIfNull(s1, "").toUpperCase(), defaultIfNull(s2, "").toUpperCase());
+  }
+
+  public static <T> T defaultIfNull(T obj, T defaultValue) {
+    if (isEmpty(obj)) {
+      return defaultValue;
+    }
+
+    return obj;
   }
 }

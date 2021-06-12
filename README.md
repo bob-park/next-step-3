@@ -26,7 +26,7 @@
 ### 요구사항 4 - redirect 방식으로 이동
 * 
 
-### 요구사항 5 - cookie
+### 요구사항 5 - httpCookie
 * 
 
 ### 요구사항 6 - stylesheet 적용
