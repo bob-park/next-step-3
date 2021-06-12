@@ -1,29 +1,29 @@
 package webserver;
 
-import model.User;
-import model.http.header.HttpHeaders;
-import model.http.request.HttpCookie;
-import model.http.request.HttpResponse;
-import model.http.type.HttpMethod;
+import controller.Controller;
+import controller.ResourceController;
+import controller.error.InternalServerErrorController;
+import controller.error.MethodNotAllowedErrorController;
+import controller.error.NotFoundErrorController;
+import controller.user.CreateUserController;
+import controller.user.LoginController;
+import controller.user.UserListController;
+import exception.NotFoundException;
+import exception.http.method.NotSupportHttpMethodException;
 import model.http.request.HttpRequest;
-import model.http.type.MediaType;
+import model.http.response.HttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.UserService;
-import util.HttpRequestUtils;
+import util.FilenameUtils;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.Socket;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 
+import static util.CommonUtils.isEmpty;
 import static util.CommonUtils.isNotBlank;
-import static util.CommonUtils.isNotEmpty;
 
 public class RequestHandler extends Thread {
 
@@ -31,12 +31,22 @@ public class RequestHandler extends Thread {
 
   private final Socket connection;
 
-  private final UserService userService;
+  private static final Map<String, Controller> CONTROLLER_MAP = new HashMap<>();
+  private static final ResourceController RESOURCE_CONTROLLER = new ResourceController();
+  private static final NotFoundErrorController NOT_FOUND_CONTROLLER = new NotFoundErrorController();
+  private static final InternalServerErrorController INTERNAL_SERVER_CONTROLLER =
+      new InternalServerErrorController();
+  private static final MethodNotAllowedErrorController METHOD_NOT_ALLOWED_CONTROLLER =
+      new MethodNotAllowedErrorController();
 
   public RequestHandler(Socket connectionSocket) {
     this.connection = connectionSocket;
 
-    this.userService = new UserService();
+    var userService = new UserService();
+
+    CONTROLLER_MAP.put("/user/create", new CreateUserController(userService));
+    CONTROLLER_MAP.put("/user/login", new LoginController(userService));
+    CONTROLLER_MAP.put("/user/list", new UserListController(userService));
   }
 
   @Override
@@ -50,81 +60,49 @@ public class RequestHandler extends Thread {
         var out = connection.getOutputStream()) {
 
       var httpRequest = HttpRequest.builder(in).build();
-      var requestHeader = httpRequest.getHeaders();
 
-      if ("/user/create".equals(httpRequest.getRequestURI())
-          && HttpMethod.POST == httpRequest.getMethod()) {
-
-        userService.save(
-            new User(
-                httpRequest.getRequestParam("userId"),
-                httpRequest.getRequestParam("password"),
-                httpRequest.getRequestParam("name"),
-                httpRequest.getRequestParam("email")));
-
-        HttpResponse.builder(httpRequest, out).build().sendRedirect("/index.html");
-
-      } else if ("/user/login".equals(httpRequest.getRequestURI())
-          && HttpMethod.POST == httpRequest.getMethod()) {
-
-        boolean isLoggedIn =
-            userService.login(
-                httpRequest.getRequestParam("userId"), httpRequest.getRequestParam("password"));
-
-        HttpResponse.builder(httpRequest, out)
-            .addCookie("logined", isLoggedIn ? "true" : "false", "/")
-            .build()
-            .sendRedirect(isLoggedIn ? "/index.html" : "/user/login_failed.html");
-
-      } else if ("/user/list".equals(httpRequest.getRequestURI())
-          && HttpMethod.GET == httpRequest.getMethod()) {
-
-        var httpCookie = requestHeader.getCookie("logined");
-
-        boolean isLoggedIn = isNotEmpty(httpCookie) && Boolean.parseBoolean(httpCookie.getValue());
-
-        var httpResponse = HttpResponse.builder(httpRequest, out).build();
-
-        if (isLoggedIn) {
-          var userListBuilder = new StringBuilder();
-
-          userListBuilder.append(
-              "<table border='1'><tr><th>userId</th><th>password</th><th>name</th><th>email</th></tr>");
-
-          userService
-              .getUserList()
-              .forEach(
-                  user ->
-                      userListBuilder
-                          .append("<tr>")
-                          .append("<td>")
-                          .append(user.getUserId())
-                          .append("</td>")
-                          .append("<td>")
-                          .append(user.getPassword())
-                          .append("</td>")
-                          .append("<td>")
-                          .append(user.getName())
-                          .append("</td>")
-                          .append("<td>")
-                          .append(user.getEmail())
-                          .append("</td>")
-                          .append("</tr>"));
-
-          userListBuilder.append("</table>");
-
-          httpResponse.sendBody(userListBuilder.toString());
-
-        } else {
-          httpResponse.sendRedirect("/user/login.html");
-        }
-
-      } else {
-        HttpResponse.builder(httpRequest, out).build().forward(httpRequest.getRequestURI());
-      }
+      requestMapping(httpRequest, HttpResponse.builder(httpRequest, out).build());
 
     } catch (IOException e) {
       log.error(e.getMessage());
     }
+  }
+
+  private void requestMapping(HttpRequest request, HttpResponse response) {
+
+    String uri = request.getRequestURI();
+
+    log.debug("method : {}, uri: {}", request.getMethod(), uri);
+
+    boolean isResource = isNotBlank(FilenameUtils.getExtension(uri));
+
+    if (isResource) {
+      RESOURCE_CONTROLLER.service(request, response);
+      return;
+    }
+
+    try {
+      getController(uri).service(request, response);
+    } catch (NotFoundException e) {
+      log.warn(e.getMessage());
+      NOT_FOUND_CONTROLLER.service(request, response);
+    } catch (NotSupportHttpMethodException e) {
+      log.warn(e.getMessage());
+      METHOD_NOT_ALLOWED_CONTROLLER.service(request, response);
+    } catch (Exception e) {
+      log.error("Server Error - {}", e.getMessage(), e);
+      INTERNAL_SERVER_CONTROLLER.service(request, response);
+    }
+  }
+
+  private Controller getController(String uri) {
+
+    var controller = CONTROLLER_MAP.get(uri);
+
+    if (isEmpty(controller)) {
+      throw new NotFoundException(uri);
+    }
+
+    return controller;
   }
 }
