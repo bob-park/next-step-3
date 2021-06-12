@@ -39,6 +39,10 @@ public class HttpResponse {
     this.headers = defaultIfNull(headers, new HttpHeaders());
   }
 
+  public static Builder builder(HttpResponse response) {
+    return new Builder(response);
+  }
+
   public static Builder builder(HttpRequest request, OutputStream out) {
     return new Builder(request, out);
   }
@@ -179,6 +183,12 @@ public class HttpResponse {
     private final OutputStream out;
 
     private HttpHeaders headers;
+
+    private Builder(HttpResponse response) {
+      this.request = response.getRequest();
+      this.out = response.getOutputStream();
+      this.headers = response.getHeaders();
+    }
 
     private Builder(HttpRequest request, OutputStream out) {
       this.request = request;
