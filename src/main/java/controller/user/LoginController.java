@@ -1,6 +1,7 @@
 package controller.user;
 
 import controller.impl.AbstractController;
+import db.DataBase;
 import exception.http.method.NotSupportHttpMethodException;
 import model.http.request.HttpRequest;
 import model.http.response.HttpResponse;
@@ -25,10 +26,11 @@ public class LoginController extends AbstractController {
     boolean isLoggedIn =
         userService.login(request.getRequestParam("userId"), request.getRequestParam("password"));
 
-    response =
-        HttpResponse.builder(response)
-            .addCookie("logined", isLoggedIn ? "true" : "false", "/")
-            .build();
+    if (isLoggedIn) {
+      var session = request.getSession();
+
+      session.setAttribute("user", DataBase.findUserById(request.getRequestParam("userId")));
+    }
 
     response.sendRedirect(isLoggedIn ? "/index.html" : "/user/login_failed.html");
   }
