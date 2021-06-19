@@ -1,5 +1,6 @@
 package model.http.request;
 
+import model.http.header.HttpCookie;
 import model.http.header.HttpCookies;
 import model.http.header.HttpHeader;
 import model.http.header.HttpHeaders;
@@ -90,6 +91,12 @@ public class HttpRequest {
 
   public long getContentLength() {
     return headers.getContentLength();
+  }
+
+  public HttpSession getSession() {
+
+    return HttpSessions.getSession(
+        getHeaders().getCookie(HttpCookie.SESSION_COOKIE_NAME).getValue());
   }
 
   private void addRequestParam(String key, String value) {

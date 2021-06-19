@@ -10,6 +10,7 @@ import controller.user.LoginController;
 import controller.user.UserListController;
 import exception.NotFoundException;
 import exception.http.method.NotSupportHttpMethodException;
+import model.http.header.HttpCookie;
 import model.http.request.HttpRequest;
 import model.http.response.HttpResponse;
 import org.slf4j.Logger;
@@ -21,6 +22,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import static util.CommonUtils.isEmpty;
 import static util.CommonUtils.isNotBlank;
@@ -74,6 +76,19 @@ public class RequestHandler extends Thread {
 
     log.debug("method : {}, uri: {}", request.getMethod(), uri);
 
+    var responseBuilder = HttpResponse.builder(response);
+
+    // * session id 가 존재 하지 않는 경우
+    if (isEmpty(request.getHeaders().getCookie(HttpCookie.SESSION_COOKIE_NAME))) {
+      String sessionId = generateSessionId();
+
+      var requestHeader = request.getHeaders();
+      requestHeader.getCookies().addCookie(HttpCookie.SESSION_COOKIE_NAME, sessionId, "/");
+      responseBuilder.addCookie(HttpCookie.SESSION_COOKIE_NAME, sessionId, "/");
+    }
+
+    response = responseBuilder.build();
+
     boolean isResource = isNotBlank(FilenameUtils.getExtension(uri));
 
     if (isResource) {
@@ -104,5 +119,9 @@ public class RequestHandler extends Thread {
     }
 
     return controller;
+  }
+
+  private String generateSessionId() {
+    return UUID.randomUUID().toString();
   }
 }

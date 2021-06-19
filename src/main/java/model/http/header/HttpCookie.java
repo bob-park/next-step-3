@@ -2,6 +2,8 @@ package model.http.header;
 
 public class HttpCookie {
 
+  public static final String SESSION_COOKIE_NAME = "JSESSIONID";
+
   private final String key;
   private final String value;
   private final String path;

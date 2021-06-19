@@ -19,9 +19,9 @@ public class UserListController extends AbstractController {
   @Override
   protected void doGet(HttpRequest request, HttpResponse response) {
 
-    var httpCookie = request.getHeaders().getCookie("logined");
+    var session = request.getSession();
 
-    var isLoggedIn = isNotEmpty(httpCookie) && Boolean.parseBoolean(httpCookie.getValue());
+    var isLoggedIn = isNotEmpty(session.getAttribute("user"));
 
     if (!isLoggedIn) {
       response.sendRedirect("/user/login.html");
